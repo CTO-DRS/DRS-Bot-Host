@@ -15,6 +15,13 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        // Chaquopy requirement: explicit ABI filters (it ships a native
+        // CPython runtime per ABI). arm64-v8a + armeabi-v7a cover physical
+        // phones; x86_64 covers emulators.
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+        }
     }
 
     buildTypes {
