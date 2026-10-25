@@ -17,10 +17,11 @@ android {
         versionName = "1.0.0"
 
         // Chaquopy requirement: explicit ABI filters (it ships a native
-        // CPython runtime per ABI). arm64-v8a + armeabi-v7a cover physical
-        // phones; x86_64 covers emulators.
+        // CPython runtime per ABI). Python 3.12 wheels exist only for
+        // arm64-v8a + x86_64 (Chaquopy dropped 32-bit ARM); x86_64 covers
+        // emulators.
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+            abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
         }
     }
 
