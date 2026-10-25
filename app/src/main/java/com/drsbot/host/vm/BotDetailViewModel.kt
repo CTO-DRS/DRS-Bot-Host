@@ -69,9 +69,9 @@ class BotDetailViewModel(
         val config = _state.value.status?.configJson ?: return
         if (_state.value.configText != null) return
         val pretty = runCatching {
-            val value = JSONTokener(config).nextValue()
-            value.toString(2)
-        }.getOrDefault(config)
+            // config is always a JSON object on the Python side; pretty-print it
+            (JSONTokener(config).nextValue() as? org.json.JSONObject)?.toString(2)
+        }.getOrNull() ?: config
         _state.value = _state.value.copy(configText = pretty)
     }
 
