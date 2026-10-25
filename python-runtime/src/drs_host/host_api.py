@@ -100,11 +100,12 @@ def check_requirements(bot_id) -> dict:
 # Installation                                                          #
 # --------------------------------------------------------------------- #
 
-def import_zip(zip_path, *, overwrite: bool = False) -> dict:
+def import_zip(zip_path, overwrite: bool = False) -> dict:
+    """Positional ``overwrite``: Chaquopy's callAttr passes positionally."""
     return _ensure().import_zip(zip_path, overwrite=overwrite)
 
 
-def import_folder(folder, *, overwrite: bool = False) -> dict:
+def import_folder(folder, overwrite: bool = False) -> dict:
     return _ensure().import_folder(folder, overwrite=overwrite)
 
 

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.drsbot.host.R
+import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.ui.components.GlassCard
 import com.drsbot.host.ui.components.GlowBackground
 import com.drsbot.host.ui.theme.NeonCyan
@@ -37,7 +38,12 @@ import com.drsbot.host.vm.SettingsViewModel
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
-    val vm: SettingsViewModel = viewModel { SettingsViewModel(context.applicationContext) }
+    val vm: SettingsViewModel = viewModel {
+        SettingsViewModel(
+            context.applicationContext,
+            SettingsStore.get(context.applicationContext),
+        )
+    }
     val settings by vm.settings.collectAsState()
     val runtime by vm.runtimeInfo.collectAsState()
     val batteryExempt by vm.batteryExempt.collectAsState()
