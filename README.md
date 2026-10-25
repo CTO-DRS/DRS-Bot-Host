@@ -42,7 +42,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, host_api, cli, scaffold | ✅ **62/62 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, host_api, cli, scaffold | ✅ **85/85 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -53,8 +53,9 @@ DRS Bot Host turns an Android phone into a small bot server:
 ├── app/                     # Android app (Kotlin + Jetpack Compose + Chaquopy)
 ├── python-runtime/          # Verified hosting core (pytest-tested, zero deps)
 │   ├── src/drs_host/        #   manifest, importer, streams, logging, runner,
-│   │                        #   supervisor, host_api, sdk, cli
-│   └── tests/               #   51 tests
+│   │                        #   supervisor, scheduler, downloader, host_api,
+│   │                        #   sdk, cli
+│   └── tests/               #   85 tests
 ├── sample-bots/             # echo-bot, config-demo (both runnable)
 ├── docs/                    # BOT_SPEC, ARCHITECTURE, BUILD_GUIDE, USER_MANUAL_AR
 ├── .github/workflows/ci.yml # Python tests + Android APK build
@@ -65,7 +66,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 ```bash
 cd python-runtime
-python3 -m pytest tests -q                                   # 62 passed
+python3 -m pytest tests -q                                   # 85 passed
 PYTHONPATH=src python3 -m drs_host.cli --data-dir /tmp/drs \
     run ../sample-bots/echo-bot --seconds 4                  # real hosting demo
 PYTHONPATH=src python3 -m drs_host.cli scaffold "My Bot" --dest /tmp/bots
@@ -79,13 +80,28 @@ Local build requirements (JDK 17, Gradle 8.11.1, Android SDK, Python 3.12):
 see **docs/BUILD_GUIDE.md**. User manual (Arabic): **docs/USER_MANUAL_AR.md**.
 Bot contract: **docs/BOT_SPEC.md**.
 
-## Roadmap (post-1.1)
+## What shipped in v1.2
 
-- Process-level isolation (Termux-style Python binaries) with force-kill.
+- **Schedules (cron-like)**: `"kind": "interval"` and `"daily"` windows in `bot.json`,
+  a scheduler thread with per-bot enable/disable, next-window hints in the UI.
+- **Per-bot CPU accounting** via `getrusage(RUSAGE_THREAD)`; host process RSS on the dashboard.
+- **Force-stop escalation**: bots that ignore the cooperative stop event are detached
+  (`FORCE_STOPPED`); zombie exit callbacks can no longer corrupt live state.
+- **Import from URL**: HTTPS zip download with a hard size cap; GitHub repo / tree links
+  are rewritten to zipballs automatically.
+- **Requirements policy** (off / warn / enforce) checked at start time with a best-effort
+  importability probe.
+- **Config editor UI** backed by `set_bot_config`, plus schedule display/toggle and the
+  force-stop button in the bot detail screen.
+
+> Full process isolation (separate Python processes with a real kill) and on-device pip
+> installs remain honest future work — see the roadmap below.
+
+## Roadmap (post-1.2)
+
+- Process-level isolation (Termux-style Python binaries) with real kill.
 - On-device pip install for bot requirements (removing the build-time constraint).
-- Per-bot CPU/RAM accounting, schedules (cron-like start windows).
-- Bot store: import directly from a Git URL.
-- Config editor UI backed by the new `set_bot_config` API.
+- Wi-Fi status page for the hosted fleet (remote dashboard).
 
 <div dir="rtl">
 

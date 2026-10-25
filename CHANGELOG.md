@@ -3,6 +3,61 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] — 2026-10-25
+
+Roadmap delivery: schedules, CPU telemetry, force-stop, URL imports,
+requirements policy and the config editor.
+
+### Added — Python runtime core (verified locally, 85/85 pytest)
+- **Schedules** in `bot.json`: `{"kind": "interval", "interval_seconds": N,
+  "run_seconds": M}` and `{"kind": "daily", "time": "HH:MM",
+  "duration_seconds": N}` with strict validation (`drs_host.manifest`).
+- `drs_host.scheduler.BotScheduler`: daemon thread ticking once per second;
+  acts on window *edges* so manually stopped bots are never fought over;
+  `next_start_at` hints in status payloads; enable/disable per bot persists
+  to `bot.json` (`set_schedule_enabled`).
+- **Per-bot CPU accounting**: `resource.getrusage(RUSAGE_THREAD)` deltas per
+  run in `drs_host.runner`; `cpu_seconds` / `last_cpu_seconds` in status,
+  fleet aggregate in `host_stats`.
+- **Force-stop escalation**: `Supervisor.force_stop()` detaches an
+  unresponsive thread and marks the bot `FORCE_STOPPED` (new terminal state);
+  exit callbacks are matched against the currently tracked runner so zombie
+  runs can never corrupt live state; `start()` warns when a detached thread
+  may still be running.
+- **URL imports** (`drs_host.downloader`): streaming HTTPS download with a
+  hard size cap, GitHub repo/`.git`/`tree` URL rewriting to zipballs,
+  temp-file cleanup; exposed as `import_bot_url` + CLI `import-url`.
+- **Requirements policy**: `set_requirements_policy(off|warn|enforce)` —
+  start-time check that combines the build-time package set with a
+  best-effort `find_spec` importability probe; `enforce` blocks the start,
+  `warn` logs a warning into the bot's own log.
+- Host telemetry: `process_rss_bytes` (VmRSS) and `scheduled` count in
+  `host_stats`.
+- New CLI commands: `force-stop`, `import-url`, `requirements-policy`.
+- 23 new tests (85 total) covering schedules (validation, interval
+  integration, daily windows incl. midnight wrap, disable semantics), CPU
+  accounting, force-stop lifecycle, URL imports (success / 404 / size cap /
+  scheme guard / GitHub rewriting) and all three requirements policies.
+
+### Added — Android app
+- Bot detail: **schedule card** (kind, next window, enable/disable switch),
+  **CPU stat tile**, **force-stop button** (shown while STOPPING or
+  detached) and a **config editor** (JSON textarea validated by
+  `set_bot_config`, status message on save/reject) — editor content
+  survives the 1.5 s status polling.
+- Import screen: **import from URL** card (GitHub-aware).
+- Dashboard: host process memory and scheduled-bot rows; `FORCE_STOPPED`
+  chip color.
+- Settings: **requirements policy** selector (off / warn / enforce)
+  persisted in DataStore and pushed into the Python runtime.
+- versionCode 3, versionName 1.2.0.
+
+### Changed
+- `drs_host` runtime version 1.2.0; `BotState` extracted to
+  `drs_host.states` (no circular import between supervisor and scheduler);
+  `check_requirements` now reports best-effort missing packages even before
+  `set_available_packages` is called.
+
 ## [1.1.0] — 2026-10-25
 
 Modern tech-focused visual overhaul + feature batch.
