@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DRS Bot Host</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_bots">Bots</string>
+    <string name="nav_import">Import</string>
+    <string name="nav_settings">Settings</string>
+
+    <string name="dashboard_title">Bot Host Control</string>
+    <string name="dashboard_runtime">Runtime</string>
+    <string name="dashboard_start_host">Start host service</string>
+    <string name="dashboard_stop_all">Stop all bots</string>
+    <string name="dashboard_running_bots">Running bots</string>
+    <string name="dashboard_no_bots">No bots yet - import one from the Import tab.</string>
+
+    <string name="bots_title">Installed bots</string>
+    <string name="bot_start">Start</string>
+    <string name="bot_stop">Stop</string>
+    <string name="bot_restart">Restart</string>
+    <string name="bot_remove">Remove</string>
+    <string name="bot_logs_title">Live logs</string>
+    <string name="bot_requirements_missing">Missing packages (rebuild APK): %1$s</string>
+
+    <string name="import_title">Import a bot</string>
+    <string name="import_pick_zip">Pick ZIP archive</string>
+    <string name="import_pick_folder">Pick project folder</string>
+    <string name="import_overwrite">Overwrite existing bot with the same id</string>
+    <string name="import_note">A valid bot contains bot.json (manifest) and a Python entrypoint. Allowed files: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. Max 25 MB archive / 100 MB extracted.</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_autostart_service">Start host service on boot</string>
+    <string name="settings_autostart_service_summary">Launches the foreground service after device restart</string>
+    <string name="settings_autostart_bots">Auto-start bots marked auto_start</string>
+    <string name="settings_autostart_bots_summary">Starts eligible bots when the host service starts</string>
+    <string name="settings_keep_awake">Keep CPU awake</string>
+    <string name="settings_keep_awake_summary">Holds a partial wake lock so bots keep running (uses more battery)</string>
+    <string name="settings_battery">Ignore battery optimizations</string>
+    <string name="settings_battery_summary">Recommended so Android does not suspend the host</string>
+    <string name="settings_runtime_info">Python runtime</string>
+    <string name="settings_not_optimized">Allowed</string>
+    <string name="settings_optimized">Restricted by system</string>
+
+    <string name="state_STOPPED">Stopped</string>
+    <string name="state_STARTING">Starting</string>
+    <string name="state_RUNNING">Running</string>
+    <string name="state_STOPPING">Stopping</string>
+    <string name="state_BACKOFF">Restart pending</string>
+    <string name="state_COMPLETED">Completed</string>
+    <string name="state_FAILED">Failed</string>
+    <string name="state_unknown">Unknown</string>
+</resources>

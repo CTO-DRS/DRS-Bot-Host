@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DRS Bot Host</string>
+    <string name="nav_dashboard">الرئيسية</string>
+    <string name="nav_bots">البوتات</string>
+    <string name="nav_import">استيراد</string>
+    <string name="nav_settings">الإعدادات</string>
+
+    <string name="dashboard_title">مركز استضافة البوتات</string>
+    <string name="dashboard_runtime">بيئة التشغيل</string>
+    <string name="dashboard_start_host">تشغيل خدمة الاستضافة</string>
+    <string name="dashboard_stop_all">إيقاف كل البوتات</string>
+    <string name="dashboard_running_bots">بوتات قيد التشغيل</string>
+    <string name="dashboard_no_bots">لا توجد بوتات بعد — استورد بوتًا من تبويب الاستيراد.</string>
+
+    <string name="bots_title">البوتات المثبتة</string>
+    <string name="bot_start">تشغيل</string>
+    <string name="bot_stop">إيقاف</string>
+    <string name="bot_restart">إعادة تشغيل</string>
+    <string name="bot_remove">حذف</string>
+    <string name="bot_logs_title">السجلات المباشرة</string>
+    <string name="bot_requirements_missing">حزم ناقصة (تتطلب إعادة بناء APK): %1$s</string>
+
+    <string name="import_title">استيراد بوت</string>
+    <string name="import_pick_zip">اختيار أرشيف ZIP</string>
+    <string name="import_pick_folder">اختيار مجلد المشروع</string>
+    <string name="import_overwrite">استبدال بوت موجود بنفس المعرّف</string>
+    <string name="import_note">البوت الصحيح يحتوي bot.json (بيان تعريف) وملف بايثون رئيسي. الامتدادات المسموحة: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. الحد الأقصى 25 ميغابايت للأرشيف / 100 ميغابايت بعد الفك.</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_autostart_service">تشغيل الخدمة عند إقلاع الجهاز</string>
+    <string name="settings_autostart_service_summary">يطلق الخدمة الأمامية بعد إعادة تشغيل الهاتف</string>
+    <string name="settings_autostart_bots">تشغيل البوتات المعلمة بـ auto_start تلقائيًا</string>
+    <string name="settings_autostart_bots_summary">يشغل البوتات المؤهلة عند بدء خدمة الاستضافة</string>
+    <string name="settings_keep_awake">إبقاء المعالج نشطًا</string>
+    <string name="settings_keep_awake_summary">يحتفظ بقفل تنبيه جزئي حتى تستمر البوتات في العمل (يستهلك بطارية أكبر)</string>
+    <string name="settings_battery">تجاهل تحسينات البطارية</string>
+    <string name="settings_battery_summary">يُنصح به حتى لا يعلّق النظام عمل الاستضافة</string>
+    <string name="settings_runtime_info">بيئة بايثون</string>
+    <string name="settings_not_optimized">مسموح</string>
+    <string name="settings_optimized">مقيّد من النظام</string>
+
+    <string name="state_STOPPED">متوقف</string>
+    <string name="state_STARTING">يبدأ</string>
+    <string name="state_RUNNING">يعمل</string>
+    <string name="state_STOPPING">يتوقف</string>
+    <string name="state_BACKOFF">إعادة تشغيل مجدولة</string>
+    <string name="state_COMPLETED">أكمل</string>
+    <string name="state_FAILED">فشل</string>
+    <string name="state_unknown">غير معروف</string>
+</resources>
