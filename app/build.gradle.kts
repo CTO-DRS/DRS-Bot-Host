@@ -91,10 +91,14 @@ dependencies {
 // it is copied into src/main/python at build time so Chaquopy packages  //
 // it into the APK. This directory is git-ignored.                       //
 // --------------------------------------------------------------------- //
+// Gradle 8 forbids touching project state from doFirst (state-lock error),
+// so the wipe is a proper Delete task ordered before the Copy.
+val cleanPythonSources = tasks.register<Delete>("cleanPythonSources") {
+    delete(layout.projectDirectory.dir("src/main/python"))
+}
+
 val syncPythonRuntime = tasks.register<Copy>("syncPythonRuntime") {
-    doFirst {
-        project.delete(layout.projectDirectory.dir("src/main/python"))
-    }
+    dependsOn(cleanPythonSources)
     from(rootProject.file("python-runtime/src"))
     into(layout.projectDirectory.dir("src/main/python"))
 }
