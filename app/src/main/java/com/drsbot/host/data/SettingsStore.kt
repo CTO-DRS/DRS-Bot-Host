@@ -27,6 +27,7 @@ class SettingsStore private constructor(private val context: Context) {
             requirementsPolicy = prefs[KEY_REQUIREMENTS_POLICY] ?: "warn",
             webStatusEnabled = prefs[KEY_WEB_STATUS_ENABLED] ?: false,
             webStatusPort = prefs[KEY_WEB_STATUS_PORT] ?: 8090,
+            webStatusToken = prefs[KEY_WEB_STATUS_TOKEN] ?: "",
         )
     }
 
@@ -62,6 +63,10 @@ class SettingsStore private constructor(private val context: Context) {
         context.dataStore.edit { it[KEY_WEB_STATUS_PORT] = port }
     }
 
+    suspend fun setWebStatusToken(token: String) {
+        context.dataStore.edit { it[KEY_WEB_STATUS_TOKEN] = token }
+    }
+
     companion object {
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_service_on_boot")
         private val KEY_AUTO_START_BOTS = booleanPreferencesKey("auto_start_bots")
@@ -71,6 +76,7 @@ class SettingsStore private constructor(private val context: Context) {
         private val KEY_REQUIREMENTS_POLICY = stringPreferencesKey("requirements_policy")
         private val KEY_WEB_STATUS_ENABLED = booleanPreferencesKey("web_status_enabled")
         private val KEY_WEB_STATUS_PORT = intPreferencesKey("web_status_port")
+        private val KEY_WEB_STATUS_TOKEN = stringPreferencesKey("web_status_token")
 
         @Volatile
         private var instance: SettingsStore? = null

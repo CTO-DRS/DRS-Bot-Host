@@ -3,6 +3,7 @@
     <string name="app_name">DRS Bot Host</string>
     <string name="nav_dashboard">الرئيسية</string>
     <string name="nav_bots">البوتات</string>
+    <string name="nav_market">السوق</string>
     <string name="nav_import">استيراد</string>
     <string name="nav_settings">الإعدادات</string>
 
@@ -117,8 +118,26 @@
     <string name="settings_web_status_toggle">لوحة الأسطول على الشبكة المحلية</string>
     <string name="settings_web_status_summary">تعرض صفحة حالة حيّة لكل البوتات على شبكة Wi-Fi المحلية (بمظهر داكن وواجهة JSON). معطّلة افتراضيًا.</string>
     <string name="settings_web_status_port">المنفذ</string>
+    <string name="settings_web_status_token">رمز الوصول (اختياري)</string>
+    <string name="settings_web_status_token_hint">اتركه فارغًا للوصول المفتوح</string>
+    <string name="settings_web_status_token_summary">يجب على الزائر تقديم هذا الرمز عبر ‎?key=… أو ترويسة Authorization: Bearer. تغييره يعيد تشغيل الخادم.</string>
     <string name="settings_web_status_running">تعمل على %1$s — افتحها من أي جهاز على الشبكة نفسها</string>
     <string name="settings_web_status_starting">جارٍ تشغيل خادم الحالة…</string>
+    <string name="settings_backup_section">النسخ الاحتياطي والاستعادة</string>
+    <string name="settings_backup_summary">اضغط كل البوتات المثبّتة (المصادر + البيان، دون السجلات) في أرشيف واحد، أو أعِد الأسطول كاملة من ملف نسخة احتياطية.</string>
+    <string name="settings_backup_button">نسخ كل البوتات احتياطيًا</string>
+    <string name="settings_restore_button">استعادة من نسخة احتياطية</string>
+
+    <string name="market_title">سوق البوتات</string>
+    <string name="market_note">سجل مُنتقى من بوتات جاهزة للتشغيل. يتم التثبيت عبر مسار التنزيل/الاستيراد المُتحقَّق نفسه المستخدم للاستيراد اليدوي بالرابط.</string>
+    <string name="market_loading">جارٍ جلب السجل…</string>
+    <string name="market_source">مصدر السجل</string>
+    <string name="market_count">‏%1$d بوت مُنتقى</string>
+    <string name="market_error_title">تعذّر تحميل السجل</string>
+    <string name="market_retry">إعادة المحاولة</string>
+    <string name="market_install">تثبيت</string>
+    <string name="market_installing">جارٍ التثبيت…</string>
+    <string name="market_overwrite">استبدال بوت مثبّت له المعرف نفسه</string>
     <string name="bot_install_button">تثبيت المتطلبات</string>
     <string name="bot_install_running">جارٍ التثبيت…</string>
     <string name="bot_install_ok">ثُبّتت في مجلد الحزم الخاص بهذا البوت: %1$s</string>

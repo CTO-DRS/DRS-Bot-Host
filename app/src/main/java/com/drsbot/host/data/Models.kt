@@ -257,12 +257,14 @@ data class WebStatusInfo(
     val running: Boolean,
     val port: Int,
     val protected: Boolean,
+    val tls: Boolean = false,
 ) {
     companion object {
         fun fromJson(o: JSONObject): WebStatusInfo = WebStatusInfo(
             running = o.optBoolean("running", false),
             port = o.optInt("port", 0),
             protected = o.optBoolean("protected", false),
+            tls = o.optBoolean("tls", false),
         )
     }
 }
@@ -277,7 +279,105 @@ data class HostSettings(
     val requirementsPolicy: String = "warn",
     val webStatusEnabled: Boolean = false,
     val webStatusPort: Int = 8090,
+    val webStatusToken: String = "",
 )
+
+/** One curated bot from the v1.4 marketplace registry. */
+data class MarketEntry(
+    val id: String,
+    val name: String,
+    val description: String,
+    val version: String,
+    val author: String,
+    val tags: List<String>,
+    val url: String,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): MarketEntry = MarketEntry(
+            id = o.optString("id"),
+            name = o.optString("name", o.optString("id")),
+            description = o.optString("description"),
+            version = o.optString("version"),
+            author = o.optString("author"),
+            tags = o.optJSONArray("tags").toStringList(),
+            url = o.optString("url"),
+        )
+    }
+}
+
+/** Outcome of marketplace_fetch(): validated registry entries + warnings. */
+data class MarketRegistry(
+    val ok: Boolean,
+    val source: String,
+    val bots: List<MarketEntry>,
+    val warnings: List<String>,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): MarketRegistry = MarketRegistry(
+            ok = o.optBoolean("ok", false),
+            source = o.optString("source"),
+            bots = o.optJSONArray("bots").let { array ->
+                if (array == null) emptyList()
+                else List(array.length()) { MarketEntry.fromJson(array.getJSONObject(it)) }
+            },
+            warnings = o.optJSONArray("errors").toStringList(),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** Outcome of backup_all(): one zip containing every installed bot. */
+data class BackupResult(
+    val ok: Boolean,
+    val path: String,
+    val bots: List<String>,
+    val botCount: Int,
+    val bytes: Long,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): BackupResult = BackupResult(
+            ok = o.optBoolean("ok", false),
+            path = o.optString("path"),
+            bots = o.optJSONArray("bots").toStringList(),
+            botCount = o.optInt("bot_count", 0),
+            bytes = o.optLong("bytes", 0),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** Outcome of restore_backup(): which bots came back, which failed. */
+data class RestoreResult(
+    val ok: Boolean,
+    val restored: List<String>,
+    val count: Int,
+    val failures: List<String>,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): RestoreResult {
+            val failures = mutableListOf<String>()
+            o.optJSONArray("failures")?.let { array ->
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val bot = item.optString("bot", "?")
+                    val why = item.optJSONArray("errors").toStringList()
+                        .joinToString("; ").ifBlank { "import failed" }
+                    failures.add("$bot: $why")
+                }
+            }
+            return RestoreResult(
+                ok = o.optBoolean("ok", false),
+                restored = o.optJSONArray("restored").toStringList(),
+                count = o.optInt("count", 0),
+                failures = failures,
+                errors = o.optJSONArray("errors").toStringList(),
+            )
+        }
+    }
+}
 
 /** Metadata about the embedded Python runtime (Settings screen). */
 data class RuntimeInfo(

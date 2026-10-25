@@ -3,6 +3,7 @@
     <string name="app_name">DRS Bot Host</string>
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_bots">Bots</string>
+    <string name="nav_market">Market</string>
     <string name="nav_import">Import</string>
     <string name="nav_settings">Settings</string>
 
@@ -118,8 +119,26 @@
     <string name="settings_web_status_toggle">LAN fleet dashboard</string>
     <string name="settings_web_status_summary">Serve a live status page of all bots on your local Wi-Fi (dark theme, JSON API included). Off by default.</string>
     <string name="settings_web_status_port">Port</string>
+    <string name="settings_web_status_token">Access token (optional)</string>
+    <string name="settings_web_status_token_hint">Leave empty for open access</string>
+    <string name="settings_web_status_token_summary">Visitors must present this token as ?key=… or an Authorization: Bearer header. Changing it restarts the server.</string>
     <string name="settings_web_status_running">Serving on %1$s — open it from any device on the same network</string>
     <string name="settings_web_status_starting">Starting the status server…</string>
+    <string name="settings_backup_section">Backup &amp; restore</string>
+    <string name="settings_backup_summary">Zip every installed bot (sources + manifest, not logs) into one archive, or bring a fleet back from a backup zip.</string>
+    <string name="settings_backup_button">Backup all bots</string>
+    <string name="settings_restore_button">Restore from backup</string>
+
+    <string name="market_title">Bot market</string>
+    <string name="market_note">A curated registry of ready-to-run bots. Installs go through the same verified download/import pipeline as a manual URL import.</string>
+    <string name="market_loading">Fetching the registry…</string>
+    <string name="market_source">Registry source</string>
+    <string name="market_count">%1$d curated bot(s)</string>
+    <string name="market_error_title">Could not load the registry</string>
+    <string name="market_retry">Retry</string>
+    <string name="market_install">Install</string>
+    <string name="market_installing">Installing…</string>
+    <string name="market_overwrite">Overwrite an installed bot with the same id</string>
     <string name="bot_install_button">Install requirements</string>
     <string name="bot_install_running">Installing…</string>
     <string name="bot_install_ok">Installed into this bot\'s private site dir: %1$s</string>

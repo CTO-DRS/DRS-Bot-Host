@@ -1,18 +1,24 @@
 package com.drsbot.host.vm
 
 import android.content.Context
+import android.net.Uri
 import android.os.PowerManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.drsbot.host.data.BackupResult
 import com.drsbot.host.data.HostSettings
+import com.drsbot.host.data.RestoreResult
 import com.drsbot.host.data.RuntimeInfo
 import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.data.WebStatusInfo
 import com.drsbot.host.di.HostGraph
+import com.drsbot.host.util.DeviceReader
+import com.drsbot.host.util.SafIo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 class SettingsViewModel(
     private val appContext: Context,
@@ -31,6 +37,7 @@ class SettingsViewModel(
             requirementsPolicy = "warn",
             webStatusEnabled = false,
             webStatusPort = 8090,
+            webStatusToken = "",
         ),
     )
     val settings: StateFlow<HostSettings> = _settings.asStateFlow()
@@ -44,14 +51,32 @@ class SettingsViewModel(
     private val _batteryExempt = MutableStateFlow(false)
     val batteryExempt: StateFlow<Boolean> = _batteryExempt.asStateFlow()
 
+    /** LAN IPv4 for the status-page URL; refreshed with the runtime info. */
+    private val _lanIp = MutableStateFlow("")
+    val lanIp: StateFlow<String> = _lanIp.asStateFlow()
+
+    /** One-shot backup/restore feedback (null clears it). */
+    private val _backupMessage = MutableStateFlow<String?>(null)
+    val backupMessage: StateFlow<String?> = _backupMessage.asStateFlow()
+
+    private val _backupWorking = MutableStateFlow(false)
+    val backupWorking: StateFlow<Boolean> = _backupWorking.asStateFlow()
+
     init {
         viewModelScope.launch {
             settingsStore.settings.collect { value ->
-                val previous = _settings.value.requirementsPolicy
+                val previousPolicy = _settings.value.requirementsPolicy
+                val previousToken = _settings.value.webStatusToken
                 _settings.value = value
                 // Push the persisted policy into the Python runtime on change.
-                if (value.requirementsPolicy != previous) {
+                if (value.requirementsPolicy != previousPolicy) {
                     repository.setRequirementsPolicy(appContext, value.requirementsPolicy)
+                }
+                // Restart the status server when the token changed so the new
+                // secret takes effect immediately (v1.4 token management).
+                if (value.webStatusToken != previousToken && value.webStatusEnabled) {
+                    repository.webStatusStart(appContext, value.webStatusPort, value.webStatusToken)
+                    refreshRuntime()
                 }
             }
         }
@@ -70,6 +95,9 @@ class SettingsViewModel(
         viewModelScope.launch {
             _webStatus.value = repository.webStatusInfo(appContext)
                 .getOrDefault(WebStatusInfo(running = false, port = 0, protected = false))
+        }
+        viewModelScope.launch {
+            _lanIp.value = DeviceReader.lanIpAddress()
         }
     }
 
@@ -109,8 +137,8 @@ class SettingsViewModel(
         // Keep the runtime server in sync immediately (the service also does
         // this on boot / settings change).
         if (enabled) {
-            val port = _settings.value.webStatusPort
-            repository.webStatusStart(appContext, port)
+            val snapshot = _settings.value
+            repository.webStatusStart(appContext, snapshot.webStatusPort, snapshot.webStatusToken)
         } else {
             repository.webStatusStop(appContext)
         }
@@ -121,8 +149,71 @@ class SettingsViewModel(
         val clamped = port.coerceIn(1024, 65535)
         settingsStore.setWebStatusPort(clamped)
         if (_settings.value.webStatusEnabled) {
-            repository.webStatusStart(appContext, clamped)
+            repository.webStatusStart(appContext, clamped, _settings.value.webStatusToken)
         }
         refreshRuntime()
+    }
+
+    fun setWebStatusToken(token: String) = viewModelScope.launch {
+        settingsStore.setWebStatusToken(token)
+    }
+
+    /** Zip every installed bot into <data>/backups/ and report the path. */
+    fun backupAll() {
+        if (_backupWorking.value) return
+        _backupWorking.value = true
+        _backupMessage.value = null
+        viewModelScope.launch {
+            val message = repository.backupAll(appContext).fold(
+                onSuccess = { result: BackupResult ->
+                    if (result.ok) {
+                        "OK: ${result.botCount} bot(s) → ${result.path}"
+                    } else {
+                        result.errors.joinToString("; ").ifBlank { "backup rejected" }
+                    }
+                },
+                onFailure = { it.message ?: "backup failed" },
+            )
+            _backupMessage.value = message
+            _backupWorking.value = false
+        }
+    }
+
+    /** Copy a SAF-picked backup zip into the cache and restore it. */
+    fun restoreFrom(uri: Uri) {
+        if (_backupWorking.value) return
+        _backupWorking.value = true
+        _backupMessage.value = null
+        viewModelScope.launch {
+            val message = runCatching {
+                val cached = SafIo.copyUriToCache(
+                    appContext,
+                    uri,
+                    "restore-${System.currentTimeMillis()}.zip",
+                )
+                try {
+                    repository.restoreBackup(appContext, cached.absolutePath, overwrite = true)
+                        .getOrThrow()
+                } finally {
+                    cached.delete()
+                }
+            }.fold(
+                onSuccess = { result: RestoreResult ->
+                    if (result.ok) {
+                        "OK: ${result.count} bot(s) restored — ${result.restored.joinToString(", ")}"
+                    } else {
+                        (result.errors + result.failures).joinToString("; ")
+                            .ifBlank { "restore rejected" }
+                    }
+                },
+                onFailure = { it.message ?: "restore failed" },
+            )
+            _backupMessage.value = message
+            _backupWorking.value = false
+        }
+    }
+
+    fun clearBackupMessage() {
+        _backupMessage.value = null
     }
 }

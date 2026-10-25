@@ -107,34 +107,6 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 }
             }
 
-            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
-                Text(
-                    text = stringResource(R.string.import_skills_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.import_skills_note),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.height(10.dp))
-                val skills = vm.skills.collectAsState().value
-                if (skills.isEmpty()) {
-                    Text("...", style = MaterialTheme.typography.bodySmall)
-                } else {
-                    skills.forEach { skill ->
-                        SkillRow(
-                            title = skill.title,
-                            description = skill.description,
-                            requires = skill.requirements.joinToString(", "),
-                            enabled = state !is ImportUiState.Working,
-                            onCreate = { vm.createFromSkill(skill) },
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
-
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.import_url_title),

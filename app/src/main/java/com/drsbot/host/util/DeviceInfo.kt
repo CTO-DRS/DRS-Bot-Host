@@ -3,6 +3,7 @@ package com.drsbot.host.util
 import android.app.ActivityManager
 import android.content.Context
 import android.os.BatteryManager
+import java.net.NetworkInterface
 
 /** Snapshot of device telemetry shown on the dashboard's System card. */
 data class DeviceInfo(
@@ -38,5 +39,23 @@ object DeviceReader {
             memoryUsedBytes = memory.first.coerceAtLeast(0L),
             memoryTotalBytes = memory.second.coerceAtLeast(0L),
         )
+    }
+
+    /**
+     * Best-effort site-local IPv4 address (Wi-Fi / Ethernet) for displaying
+     * the status-page URL. Empty string when nothing usable is up — the UI
+     * then falls back to a placeholder.
+     */
+    fun lanIpAddress(): String = try {
+        NetworkInterface.getNetworkInterfaces().asSequence()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.asSequence() }
+            .filterIsInstance<java.net.Inet4Address>()
+            .filter { it.isSiteLocalAddress }
+            .map { it.hostAddress ?: "" }
+            .firstOrNull { it.isNotBlank() }
+            ?: ""
+    } catch (_: Exception) {
+        ""
     }
 }

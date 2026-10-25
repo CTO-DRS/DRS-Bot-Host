@@ -63,7 +63,7 @@ class BotHostService : LifecycleService() {
                     if (snapshot.keepCpuAwake) {
                         acquireWakeLock()
                     }
-                    syncWebStatus(snapshot.webStatusEnabled, snapshot.webStatusPort)
+                    syncWebStatus(snapshot.webStatusEnabled, snapshot.webStatusPort, snapshot.webStatusToken)
                 }
             }
         }
@@ -76,7 +76,7 @@ class BotHostService : LifecycleService() {
             launch {
                 SettingsStore.get(applicationContext).settings.collect { settings ->
                     alertsEnabled = settings.crashAlerts
-                    syncWebStatus(settings.webStatusEnabled, settings.webStatusPort)
+                    syncWebStatus(settings.webStatusEnabled, settings.webStatusPort, settings.webStatusToken)
                 }
             }
             while (true) {
@@ -138,11 +138,10 @@ class BotHostService : LifecycleService() {
         }
     }
 
-    /** Start/stop the LAN fleet status page according to user settings. */
-    private fun syncWebStatus(enabled: Boolean, port: Int) {
+    private fun syncWebStatus(enabled: Boolean, port: Int, token: String) {
         lifecycleScope.launch {
             if (enabled) {
-                HostGraph.repository.webStatusStart(applicationContext, port)
+                HostGraph.repository.webStatusStart(applicationContext, port, token)
                     .onFailure {
                         android.util.Log.w("BotHostService", "web status start failed: ${it.message}")
                     }

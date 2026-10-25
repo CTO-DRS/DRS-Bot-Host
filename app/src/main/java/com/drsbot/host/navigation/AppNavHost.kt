@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,11 +28,13 @@ import com.drsbot.host.ui.screens.BotDetailScreen
 import com.drsbot.host.ui.screens.BotsScreen
 import com.drsbot.host.ui.screens.DashboardScreen
 import com.drsbot.host.ui.screens.ImportScreen
+import com.drsbot.host.ui.screens.MarketScreen
 import com.drsbot.host.ui.screens.SettingsScreen
 
 object Routes {
     const val DASHBOARD = "dashboard"
     const val BOTS = "bots"
+    const val MARKET = "market"
     const val IMPORT = "import"
     const val SETTINGS = "settings"
     const val BOT_DETAIL = "bot/{botId}"
@@ -50,6 +53,9 @@ fun AppNavHost() {
         },
         TopDestination(Routes.BOTS, R.string.nav_bots) {
             Icon(Icons.Filled.SmartToy, contentDescription = null)
+        },
+        TopDestination(Routes.MARKET, R.string.nav_market) {
+            Icon(Icons.Filled.Storefront, contentDescription = null)
         },
         TopDestination(Routes.IMPORT, R.string.nav_import) {
             Icon(Icons.Filled.AddCircle, contentDescription = null)
@@ -96,6 +102,15 @@ fun AppNavHost() {
             composable(Routes.BOTS) {
                 BotsScreen(
                     onOpenBot = { botId -> navController.navigate(Routes.botDetail(botId)) },
+                )
+            }
+            composable(Routes.MARKET) {
+                MarketScreen(
+                    onInstalled = { botId ->
+                        navController.navigate(Routes.botDetail(botId)) {
+                            popUpTo(Routes.MARKET)
+                        }
+                    },
                 )
             }
             composable(Routes.IMPORT) {

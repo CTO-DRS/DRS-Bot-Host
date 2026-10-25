@@ -29,7 +29,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -45,6 +48,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,7 +60,12 @@ import com.drsbot.host.ui.components.GlassCard
 import com.drsbot.host.ui.components.GlowBackground
 import com.drsbot.host.ui.components.SectionHeader
 import com.drsbot.host.ui.theme.Accents
+import com.drsbot.host.ui.theme.NeonMint
+import com.drsbot.host.ui.theme.NeonRed
 import com.drsbot.host.vm.SettingsViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 
 private const val REPO_URL = "https://github.com/CTO-DRS/DRS-Bot-Host"
 private const val RELEASES_URL = "$REPO_URL/releases"
@@ -73,10 +83,17 @@ fun SettingsScreen() {
     val runtime by vm.runtimeInfo.collectAsState()
     val webStatus by vm.webStatus.collectAsState()
     val batteryExempt by vm.batteryExempt.collectAsState()
+    val lanIp by vm.lanIp.collectAsState()
+    val backupMessage by vm.backupMessage.collectAsState()
+    val backupWorking by vm.backupWorking.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { }
+
+    val restorePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(vm::restoreFrom) }
 
     GlowBackground {
         Column(
@@ -138,17 +155,86 @@ fun SettingsScreen() {
                         label = { Text(stringResource(R.string.settings_web_status_port)) },
                     )
                     Spacer(Modifier.height(8.dp))
+                    // v1.4: optional shared secret — every visitor must present
+                    // it as ?key=… or an Authorization: Bearer header.
+                    var tokenVisible by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = settings.webStatusToken,
+                        onValueChange = vm::setWebStatusToken,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.settings_web_status_token)) },
+                        placeholder = { Text(stringResource(R.string.settings_web_status_token_hint)) },
+                        visualTransformation = if (tokenVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                Icon(
+                                    imageVector = if (tokenVisible) {
+                                        Icons.Filled.VisibilityOff
+                                    } else {
+                                        Icons.Filled.Visibility
+                                    },
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_web_status_token_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
                     val web = webStatus
+                    val scheme = if (web.tls) "https" else "http"
+                    val hostDisplay = lanIp.ifBlank { "<phone-ip>" }
                     Text(
                         text = if (web.running) {
                             stringResource(
                                 R.string.settings_web_status_running,
-                                "http://<phone-ip>:${web.port}",
+                                "$scheme://$hostDisplay:${web.port}",
                             )
                         } else {
                             stringResource(R.string.settings_web_status_starting)
                         },
                         style = MaterialTheme.typography.bodySmall,
+                        color = if (web.running) NeonMint else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                SectionHeader(stringResource(R.string.settings_backup_section))
+                Text(
+                    text = stringResource(R.string.settings_backup_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = vm::backupAll,
+                        enabled = !backupWorking,
+                    ) {
+                        Text(stringResource(R.string.settings_backup_button))
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            restorePicker.launch(arrayOf("application/zip", "application/octet-stream"))
+                        },
+                        enabled = !backupWorking,
+                    ) {
+                        Text(stringResource(R.string.settings_restore_button))
+                    }
+                }
+                backupMessage?.let { message ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (message.startsWith("OK")) NeonMint else NeonRed,
                     )
                 }
             }

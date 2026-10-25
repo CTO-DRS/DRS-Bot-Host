@@ -101,15 +101,19 @@ class BotRepository {
             InstallResult.fromJson(obj)
         }
 
-    suspend fun webStatusStart(context: Context, port: Int): Result<WebStatusInfo> =
+    suspend fun webStatusStart(
+        context: Context,
+        port: Int,
+        token: String = "",
+    ): Result<WebStatusInfo> =
         call(context) { api ->
             val obj = JSONObject(
-                PyBridge.dumps(api.callAttr("web_status_start", port)),
+                PyBridge.dumps(api.callAttr("web_status_start", port, token)),
             )
             if (!obj.optBoolean("ok", false)) {
                 throw IllegalStateException(obj.errorsMessage())
             }
-            WebStatusInfo(running = true, port = obj.optInt("port", port), protected = false)
+            WebStatusInfo.fromJson(obj).copy(running = true, port = obj.optInt("port", port))
         }
 
     suspend fun webStatusStop(context: Context): Result<Boolean> =
@@ -124,6 +128,50 @@ class BotRepository {
             val obj = JSONObject(PyBridge.dumps(api.callAttr("web_status_info")))
             WebStatusInfo.fromJson(obj)
         }
+
+    // ── v1.4: marketplace / backup ──────────────────────────────────────────
+
+    /** Fetches + validates a curated bot registry (default source when null). */
+    suspend fun marketplaceFetch(context: Context, url: String? = null): Result<MarketRegistry> =
+        call(context) { api ->
+            val payload = if (url.isNullOrBlank()) {
+                PyBridge.dumps(api.callAttr("marketplace_fetch"))
+            } else {
+                PyBridge.dumps(api.callAttr("marketplace_fetch", url))
+            }
+            MarketRegistry.fromJson(JSONObject(payload))
+        }
+
+    /** Downloads a marketplace entry's zip and imports it (hardened path). */
+    suspend fun marketplaceInstall(
+        context: Context,
+        url: String,
+        overwrite: Boolean = false,
+    ): Result<ImportResult> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("marketplace_install", url, overwrite)),
+        )
+        ImportResult.fromJson(obj)
+    }
+
+    /** Zips every installed bot + metadata under <data>/backups/. */
+    suspend fun backupAll(context: Context): Result<BackupResult> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("backup_all")))
+            BackupResult.fromJson(obj)
+        }
+
+    /** Re-imports every bot from a backup zip (metadata required). */
+    suspend fun restoreBackup(
+        context: Context,
+        zipPath: String,
+        overwrite: Boolean = false,
+    ): Result<RestoreResult> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("restore_backup", zipPath, overwrite)),
+        )
+        RestoreResult.fromJson(obj)
+    }
 
     // ── lifecycle actions ───────────────────────────────────────────────────
 
