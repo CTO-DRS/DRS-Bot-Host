@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.1.0-blue)
+![version](https://img.shields.io/badge/version-1.3.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.1.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.1.0/DRS-Bot-Host-v1.1.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.3.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.3.0/DRS-Bot-Host-v1.3.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -32,6 +32,17 @@ DRS Bot Host turns an Android phone into a small bot server:
 - **Fleet dashboard**: KPI tiles (bots / active / failed / restarts),
   system telemetry (battery, memory, host uptime).
 - **Crash alerts**: a notification the moment a bot enters `FAILED`.
+- **Skill templates**: create a working bot with one tap — URL poller,
+  RSS watcher, file watcher, webhook receiver, scheduled-window demo,
+  Telegram echo (dependency auto-installed) and the classic heartbeat.
+- **On-device pip installs**: each bot gets its own private site directory;
+  install its declared packages from the bot detail screen (security
+  filtered: no URLs, no git, no local paths).
+- **Process isolation with a real kill**: `"isolation": "process"` runs a
+  bot as a separate Python process — force-stop becomes a true SIGKILL
+  (falls back to threads on runtimes without a standalone python binary).
+- **Wi-Fi status page**: opt-in LAN dashboard (dark HTML + JSON API,
+  optional token) served by the phone itself.
 - **Personalize**: pick the accent color (cyan / violet / mint / amber).
 - **Dark futuristic glass UI** (Kotlin + Jetpack Compose) with an animated
   engineering-grid backdrop, neon orbs and a scanline sweep.
@@ -42,7 +53,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, host_api, cli, scaffold | ✅ **85/85 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, host_api, cli, scaffold | ✅ **107/107 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -55,7 +66,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 │   ├── src/drs_host/        #   manifest, importer, streams, logging, runner,
 │   │                        #   supervisor, scheduler, downloader, host_api,
 │   │                        #   sdk, cli
-│   └── tests/               #   85 tests
+│   └── tests/               #   107 tests
 ├── sample-bots/             # echo-bot, config-demo (both runnable)
 ├── docs/                    # BOT_SPEC, ARCHITECTURE, BUILD_GUIDE, USER_MANUAL_AR
 ├── .github/workflows/ci.yml # Python tests + Android APK build
@@ -66,7 +77,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 ```bash
 cd python-runtime
-python3 -m pytest tests -q                                   # 85 passed
+python3 -m pytest tests -q                                   # 107 passed
 PYTHONPATH=src python3 -m drs_host.cli --data-dir /tmp/drs \
     run ../sample-bots/echo-bot --seconds 4                  # real hosting demo
 PYTHONPATH=src python3 -m drs_host.cli scaffold "My Bot" --dest /tmp/bots
@@ -94,14 +105,28 @@ Bot contract: **docs/BOT_SPEC.md**.
 - **Config editor UI** backed by `set_bot_config`, plus schedule display/toggle and the
   force-stop button in the bot detail screen.
 
-> Full process isolation (separate Python processes with a real kill) and on-device pip
-> installs remain honest future work — see the roadmap below.
+## What shipped in v1.3
 
-## Roadmap (post-1.2)
+- **Skill templates** (`drs_host.skills`): seven curated one-tap bots,
+  surfaced on the app's Import screen and via the CLI.
+- **On-device requirements installer** (`drs_host.installer`): in-process
+  pip into a per-bot site dir, strict requirement filtering, per-bot
+  `sys.path` wiring, 512 MB cap.
+- **Process isolation** (`drs_host.isolation`): real subprocess per bot with
+  SIGTERM→stop-event bridging and a true SIGKILL on force-stop; thread-mode
+  fallback where no standalone python binary exists (e.g. Chaquopy).
+- **Wi-Fi fleet status page** (`drs_host.webstatus`): dark HTML dashboard +
+  JSON API + per-bot log endpoint, optional shared-secret token.
 
-- Process-level isolation (Termux-style Python binaries) with real kill.
-- On-device pip install for bot requirements (removing the build-time constraint).
-- Wi-Fi status page for the hosted fleet (remote dashboard).
+> On-device process isolation needs a standalone Python binary; inside
+> Chaquopy the app keeps thread mode (probed at runtime, honestly reported
+> in each bot's log). Termux-style binaries remain future work.
+
+## Roadmap (post-1.3)
+
+- Termux-style standalone Python binaries for on-device process isolation.
+- Token management UI for the status page + HTTPS support.
+- Bot marketplace: share/import curated bots by URL.
 
 <div dir="rtl">
 

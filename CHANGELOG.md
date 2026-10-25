@@ -1,3 +1,59 @@
+## [1.3.0] — 2026-10-26
+
+"All skills" delivery: the remaining post-1.2 roadmap plus a skill template
+system — process isolation with a real kill, on-device requirements installs
+and a Wi-Fi fleet status page.
+
+### Added — Python runtime core (verified locally, 107/107 pytest)
+- **Skill templates** (`drs_host.skills`): seven curated, ready-to-run bot
+  blueprints — `echo`, `http-poller`, `rss-watcher`, `file-watcher`,
+  `webhook-receiver`, `scheduler-cron` (manifest schedule demo) and
+  `telegram-echo` (declares `python-telegram-bot`). `scaffold_skill()`
+  materialises a valid, importable bot folder; `list_skills()` exposes the
+  catalogue to the app and CLI (`skills`, `scaffold-skill`).
+- **On-device requirements installer** (`drs_host.installer`): pip runs
+  in-process (with a watchdog thread) and installs into a per-bot site dir
+  `<data>/site/<bot_id>`; requirements merge `bot.json` + `requirements.txt`
+  through a strict security filter (URLs, `git+`, local paths and pip
+  options are rejected); a 512 MB soft cap guards the site dir; the runner
+  prepends the site dir to `sys.path` for each run; removed bots lose their
+  site dir. Exposed as `install_bot_requirements` + CLI `install-reqs`.
+- **Process isolation** (`drs_host.isolation` + `drs_host.child_runner`):
+  `"isolation": "process"` in `bot.json` runs the bot as a separate CPython
+  subprocess — cooperative stop via SIGTERM→stop-event bridging, and
+  `force_stop` escalates to a **real SIGKILL** (no zombie threads). Child
+  stdout is piped into the bot's ring/JSONL logs; CPU is accounted via
+  `getrusage(RUSAGE_CHILDREN)` deltas. Runtimes without a standalone python
+  binary (Android/Chaquopy) fall back to thread mode with an honest warning
+  in the bot log. New status fields: `isolation`, `isolation_effective`.
+- **Wi-Fi fleet status page** (`drs_host.webstatus`): opt-in
+  `ThreadingHTTPServer` serving a dark auto-refreshing HTML dashboard at
+  `/`, a JSON API at `/api/status` and per-bot logs at
+  `/api/bots/<id>/logs?limit=N`; optional shared-secret token (`?key=` or
+  `Authorization: Bearer`); port 0 supported (OS-assigned, reported back).
+  Exposed as `web_status_start/stop/info` + CLI `serve-status`.
+- 22 new tests (107 total): skill catalogue/scaffolds, installer security
+  filter, a **real offline pip install** (local wheelhouse) verified down to
+  "bot imports the installed package during a supervised run", web status
+  (HTML/JSON/401/404/idempotent start), process-mode lifecycle (cooperative
+  stop, crash reporting, real-kill force stop, thread fallback) and CLI.
+
+### Added — Android app (validated by CI build)
+- **Skill templates card** on the Import screen: browse the registry and
+  create + import a bot in one tap (scaffold → import pipeline with cache
+  cleanup).
+- **Install requirements** action on the bot detail screen with live
+  "Installing…" state, success list and pip output tail.
+- **Wi-Fi status page settings card**: enable/disable, port field
+  (1024–65535), live running/URL hint; the foreground service keeps the
+  server in sync with the persisted setting (boot included).
+- Data layer: `listSkills` / `scaffoldSkill` / `installRequirements` /
+  `webStatusStart|Stop|Info` repository calls; tolerant models
+  (`SkillInfo`, `ScaffoldResult`, `InstallResult`, `WebStatusInfo`);
+  `BotStatus.isolation`/`isolation_effective`; DataStore-backed
+  `webStatusEnabled`/`webStatusPort`.
+- versionCode 4, versionName 1.3.0; new strings in English + Arabic.
+
 # Changelog — DRS Bot Host
 
 All notable changes to this project are documented in this file.
