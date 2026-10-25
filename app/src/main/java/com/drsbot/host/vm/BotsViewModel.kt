@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.BotStatus
+import com.drsbot.host.data.HostStats
 import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.di.HostGraph
 import kotlinx.coroutines.delay
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Polls the Python supervisor and exposes the bot list to the UI. */
+/** Polls the Python supervisor and exposes the bot list + fleet stats. */
 class BotsViewModel(
     private val appContext: Context,
     settingsStore: SettingsStore,
@@ -22,6 +23,9 @@ class BotsViewModel(
 
     private val _bots = MutableStateFlow<List<BotStatus>>(emptyList())
     val bots: StateFlow<List<BotStatus>> = _bots.asStateFlow()
+
+    private val _stats = MutableStateFlow<HostStats?>(null)
+    val stats: StateFlow<HostStats?> = _stats.asStateFlow()
 
     private val _loadError = MutableStateFlow<String?>(null)
     val loadError: StateFlow<String?> = _loadError.asStateFlow()
@@ -44,6 +48,8 @@ class BotsViewModel(
         repository.listBots(appContext)
             .onSuccess { _bots.value = it; _loadError.value = null }
             .onFailure { _loadError.value = it.message }
+        repository.hostStats(appContext)
+            .onSuccess { _stats.value = it }
     }
 
     fun start(botId: String) = launchAction { repository.start(appContext, botId) }
@@ -55,6 +61,20 @@ class BotsViewModel(
     fun remove(botId: String) = launchAction { repository.remove(appContext, botId) }
 
     fun stopAll() = launchAction { repository.stopAll(appContext) }
+
+    /** Starts every bot that is currently in a terminal state. */
+    fun startAll() {
+        viewModelScope.launch {
+            val candidates = _bots.value.filter { it.isTerminal }.map { it.id }
+            for (botId in candidates) {
+                repository.start(appContext, botId)
+            }
+            if (candidates.isEmpty()) {
+                _actionMessage.value = null
+            }
+            refresh()
+        }
+    }
 
     private fun launchAction(action: suspend () -> Result<Boolean>) {
         viewModelScope.launch {

@@ -10,42 +10,89 @@
     <string name="dashboard_runtime">بيئة التشغيل</string>
     <string name="dashboard_start_host">تشغيل خدمة الاستضافة</string>
     <string name="dashboard_stop_all">إيقاف كل البوتات</string>
+    <string name="dashboard_start_all">تشغيل كل البوتات</string>
     <string name="dashboard_running_bots">بوتات قيد التشغيل</string>
     <string name="dashboard_no_bots">لا توجد بوتات بعد — استورد بوتًا من تبويب الاستيراد.</string>
+    <string name="dashboard_service_section">خدمة الاستضافة</string>
+    <string name="dashboard_system_section">النظام</string>
+
+    <string name="stat_bots">البوتات</string>
+    <string name="stat_running">نشطة</string>
+    <string name="stat_failed">فاشلة</string>
+    <string name="stat_restarts">إعادات التشغيل</string>
+
+    <string name="system_battery">البطارية</string>
+    <string name="system_memory">الذاكرة المستخدمة</string>
+    <string name="system_host_uptime">مدة تشغيل المضيف</string>
 
     <string name="bots_title">البوتات المثبتة</string>
+    <string name="bots_search_hint">ابحث بالاسم أو المعرّف</string>
+    <string name="bots_start_all">تشغيل الكل</string>
+    <string name="filter_all">الكل</string>
+    <string name="filter_active">نشطة</string>
+    <string name="filter_stopped">متوقفة</string>
+    <string name="filter_failed">فاشلة</string>
     <string name="bot_start">تشغيل</string>
     <string name="bot_stop">إيقاف</string>
     <string name="bot_restart">إعادة تشغيل</string>
     <string name="bot_remove">حذف</string>
     <string name="bot_logs_title">السجلات المباشرة</string>
-    <string name="bot_requirements_missing">حزم ناقصة (تتطلب إعادة بناء APK): %1$s</string>
+    <string name="bot_requirements_missing">حزم ناقصة (أعد بناء APK): %1$s</string>
+    <string name="bot_runs_label">تشغيلات: %1$d</string>
+    <string name="bot_runs_uptime">تشغيلات: %1$d · مدة التشغيل: %2$s</string>
+
+    <string name="bot_stats_section">الإحصائيات</string>
+    <string name="bot_uptime">مدة التشغيل</string>
+    <string name="bot_runs">تشغيلات</string>
+    <string name="bot_restarts">إعادات التشغيل</string>
+    <string name="bot_policy">السياسة</string>
+    <string name="bot_export_section">تصدير السجلات</string>
+    <string name="bot_export_logs">تصدير السجلات (zip)</string>
+    <string name="bot_copy_path">نسخ المسار</string>
 
     <string name="import_title">استيراد بوت</string>
     <string name="import_pick_zip">اختيار أرشيف ZIP</string>
     <string name="import_pick_folder">اختيار مجلد المشروع</string>
     <string name="import_overwrite">استبدال بوت موجود بنفس المعرّف</string>
-    <string name="import_note">البوت الصحيح يحتوي bot.json (بيان تعريف) وملف بايثون رئيسي. الامتدادات المسموحة: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. الحد الأقصى 25 ميغابايت للأرشيف / 100 ميغابايت بعد الفك.</string>
+    <string name="import_note">البوت الصحيح يحتوي bot.json (بيان) وملف بايثون رئيسي. الامتدادات المسموحة: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. بحد أقصى 25 ميغابايت للأرشيف / 100 ميغابايت بعد الفك.</string>
 
     <string name="settings_title">الإعدادات</string>
-    <string name="settings_autostart_service">تشغيل الخدمة عند إقلاع الجهاز</string>
-    <string name="settings_autostart_service_summary">يطلق الخدمة الأمامية بعد إعادة تشغيل الهاتف</string>
-    <string name="settings_autostart_bots">تشغيل البوتات المعلمة بـ auto_start تلقائيًا</string>
-    <string name="settings_autostart_bots_summary">يشغل البوتات المؤهلة عند بدء خدمة الاستضافة</string>
+    <string name="settings_appearance">المظهر</string>
+    <string name="settings_accent">لون التمييز</string>
+    <string name="settings_accent_summary">يُطبق فورًا على التطبيق بالكامل</string>
+    <string name="settings_autostart_service">تشغيل خدمة الاستضافة عند الإقلاع</string>
+    <string name="settings_autostart_service_summary">تشغّل الخدمة الأمامية بعد إعادة تشغيل الجهاز</string>
+    <string name="settings_autostart_bots">تشغيل البوتات المعلّمة auto_start تلقائيًا</string>
+    <string name="settings_autostart_bots_summary">يشغّل البوتات المؤهلة عند بدء خدمة الاستضافة</string>
     <string name="settings_keep_awake">إبقاء المعالج نشطًا</string>
-    <string name="settings_keep_awake_summary">يحتفظ بقفل تنبيه جزئي حتى تستمر البوتات في العمل (يستهلك بطارية أكبر)</string>
+    <string name="settings_keep_awake_summary">يحتفظ بقفل تنبيه جزئي حتى تستمر البوتات (يستهلك بطارية أكثر)</string>
+    <string name="settings_crash_alerts">تنبيهات الأعطال</string>
+    <string name="settings_crash_alerts_summary">إشعار عند دخول أي بوت حالة الفشل</string>
     <string name="settings_battery">تجاهل تحسينات البطارية</string>
-    <string name="settings_battery_summary">يُنصح به حتى لا يعلّق النظام عمل الاستضافة</string>
+    <string name="settings_battery_summary">موصى به حتى لا يعلّق أندرويد المضيف</string>
     <string name="settings_runtime_info">بيئة بايثون</string>
+    <string name="settings_about">حول التطبيق</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_repo">المستودع</string>
+    <string name="settings_release">الإصدارات</string>
     <string name="settings_not_optimized">مسموح</string>
     <string name="settings_optimized">مقيّد من النظام</string>
 
+    <string name="notif_channel_host">مضيف البوتات</string>
+    <string name="notif_channel_host_desc">حالة مستمرة لخدمة استضافة البوتات</string>
+    <string name="notif_channel_alerts">أعطال البوتات</string>
+    <string name="notif_channel_alerts_desc">تنبيهات عند تعطل بوت مستضاف</string>
+    <string name="notif_no_bots">لا توجد بوتات قيد التشغيل</string>
+    <string name="notif_bots_running">%1$d بوت قيد التشغيل</string>
+    <string name="notif_failed_title">فشل البوت: %1$s</string>
+    <string name="notif_failed_default">توقف البوت بخطأ</string>
+
     <string name="state_STOPPED">متوقف</string>
-    <string name="state_STARTING">يبدأ</string>
+    <string name="state_STARTING">بدء التشغيل</string>
     <string name="state_RUNNING">يعمل</string>
     <string name="state_STOPPING">يتوقف</string>
     <string name="state_BACKOFF">إعادة تشغيل مجدولة</string>
-    <string name="state_COMPLETED">أكمل</string>
-    <string name="state_FAILED">فشل</string>
+    <string name="state_COMPLETED">مكتمل</string>
+    <string name="state_FAILED">فاشل</string>
     <string name="state_unknown">غير معروف</string>
 </resources>

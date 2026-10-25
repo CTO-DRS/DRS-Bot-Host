@@ -30,6 +30,8 @@ import kotlinx.coroutines.runBlocking
 class BotHostService : LifecycleService() {
 
     private var wakeLock: PowerManager.WakeLock? = null
+    private var alertsEnabled: Boolean = true
+    private var knownFailed: Set<String> = emptySet()
 
     override fun onCreate() {
         super.onCreate()
@@ -70,6 +72,11 @@ class BotHostService : LifecycleService() {
     private fun observeBots() {
         lifecycleScope.launch {
             val repository = HostGraph.repository
+            launch {
+                SettingsStore.get(applicationContext).settings.collect {
+                    alertsEnabled = it.crashAlerts
+                }
+            }
             while (true) {
                 delay(5_000)
                 repository.listBots(applicationContext)
@@ -78,11 +85,54 @@ class BotHostService : LifecycleService() {
                             it.state == "RUNNING" || it.state == "STARTING" || it.state == "BACKOFF"
                         }
                         updateNotification(
-                            if (running == 0) "No bots running"
-                            else "$running bot(s) running",
+                            if (running == 0) getString(R.string.notif_no_bots)
+                            else getString(R.string.notif_bots_running, running),
                         )
+                        raiseFailureAlerts(bots)
                     }
             }
+        }
+    }
+
+    /** Notify once for every bot that newly entered FAILED since the last poll. */
+    private fun raiseFailureAlerts(bots: List<com.drsbot.host.data.BotStatus>) {
+        val failedNow = bots.filter { it.state == "FAILED" }.map { it.id }.toSet()
+        val fresh = failedNow - knownFailed
+        knownFailed = failedNow
+        if (!alertsEnabled || fresh.isEmpty()) return
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        fresh.forEach { botId ->
+            val bot = bots.firstOrNull { it.id == botId } ?: return@forEach
+            val reason = bot.lastError?.lineSequence()?.firstOrNull()
+                ?: getString(R.string.notif_failed_default)
+            val notification = NotificationCompat.Builder(this, DrsApp.CHANNEL_ALERTS)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setContentTitle(getString(R.string.notif_failed_title, bot.name))
+                .setContentText(reason)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
+                .setAutoCancel(true)
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        this,
+                        botId.hashCode(),
+                        Intent(this, MainActivity::class.java),
+                        PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+                .build()
+            manager.notify(
+                DrsApp.NOTIFICATION_ALERT_BASE_ID + (botId.hashCode() and 0x7fffffff) % 100_000,
+                notification,
+            )
         }
     }
 

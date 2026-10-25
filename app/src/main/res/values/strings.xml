@@ -10,16 +10,45 @@
     <string name="dashboard_runtime">Runtime</string>
     <string name="dashboard_start_host">Start host service</string>
     <string name="dashboard_stop_all">Stop all bots</string>
+    <string name="dashboard_start_all">Start all bots</string>
     <string name="dashboard_running_bots">Running bots</string>
     <string name="dashboard_no_bots">No bots yet - import one from the Import tab.</string>
+    <string name="dashboard_service_section">Host service</string>
+    <string name="dashboard_system_section">System</string>
+
+    <string name="stat_bots">BOTS</string>
+    <string name="stat_running">ACTIVE</string>
+    <string name="stat_failed">FAILED</string>
+    <string name="stat_restarts">RESTARTS</string>
+
+    <string name="system_battery">Battery</string>
+    <string name="system_memory">Memory in use</string>
+    <string name="system_host_uptime">Host uptime</string>
 
     <string name="bots_title">Installed bots</string>
+    <string name="bots_search_hint">Search by name or id</string>
+    <string name="bots_start_all">Start all</string>
+    <string name="filter_all">All</string>
+    <string name="filter_active">Active</string>
+    <string name="filter_stopped">Stopped</string>
+    <string name="filter_failed">Failed</string>
     <string name="bot_start">Start</string>
     <string name="bot_stop">Stop</string>
     <string name="bot_restart">Restart</string>
     <string name="bot_remove">Remove</string>
     <string name="bot_logs_title">Live logs</string>
     <string name="bot_requirements_missing">Missing packages (rebuild APK): %1$s</string>
+    <string name="bot_runs_label">runs: %1$d</string>
+    <string name="bot_runs_uptime">runs: %1$d · uptime: %2$s</string>
+
+    <string name="bot_stats_section">Statistics</string>
+    <string name="bot_uptime">uptime</string>
+    <string name="bot_runs">runs</string>
+    <string name="bot_restarts">restarts</string>
+    <string name="bot_policy">policy</string>
+    <string name="bot_export_section">Log export</string>
+    <string name="bot_export_logs">Export logs (zip)</string>
+    <string name="bot_copy_path">Copy path</string>
 
     <string name="import_title">Import a bot</string>
     <string name="import_pick_zip">Pick ZIP archive</string>
@@ -28,17 +57,35 @@
     <string name="import_note">A valid bot contains bot.json (manifest) and a Python entrypoint. Allowed files: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. Max 25 MB archive / 100 MB extracted.</string>
 
     <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_accent">Accent color</string>
+    <string name="settings_accent_summary">Applied instantly across the whole app</string>
     <string name="settings_autostart_service">Start host service on boot</string>
     <string name="settings_autostart_service_summary">Launches the foreground service after device restart</string>
     <string name="settings_autostart_bots">Auto-start bots marked auto_start</string>
     <string name="settings_autostart_bots_summary">Starts eligible bots when the host service starts</string>
     <string name="settings_keep_awake">Keep CPU awake</string>
     <string name="settings_keep_awake_summary">Holds a partial wake lock so bots keep running (uses more battery)</string>
+    <string name="settings_crash_alerts">Crash alerts</string>
+    <string name="settings_crash_alerts_summary">Notify when a bot enters the FAILED state</string>
     <string name="settings_battery">Ignore battery optimizations</string>
     <string name="settings_battery_summary">Recommended so Android does not suspend the host</string>
     <string name="settings_runtime_info">Python runtime</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_repo">Repository</string>
+    <string name="settings_release">Releases</string>
     <string name="settings_not_optimized">Allowed</string>
     <string name="settings_optimized">Restricted by system</string>
+
+    <string name="notif_channel_host">Bot host</string>
+    <string name="notif_channel_host_desc">Persistent status of the bot hosting service</string>
+    <string name="notif_channel_alerts">Bot failures</string>
+    <string name="notif_channel_alerts_desc">Alerts raised when a hosted bot crashes</string>
+    <string name="notif_no_bots">No bots running</string>
+    <string name="notif_bots_running">%1$d bot(s) running</string>
+    <string name="notif_failed_title">Bot failed: %1$s</string>
+    <string name="notif_failed_default">The bot exited with an error</string>
 
     <string name="state_STOPPED">Stopped</string>
     <string name="state_STARTING">Starting</string>

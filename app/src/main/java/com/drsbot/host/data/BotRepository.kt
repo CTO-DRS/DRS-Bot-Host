@@ -60,6 +60,19 @@ class BotRepository {
             RuntimeInfo.fromJson(obj)
         }
 
+    suspend fun hostStats(context: Context): Result<HostStats> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("host_stats")))
+            HostStats.fromJson(obj)
+        }
+
+    suspend fun exportLogs(context: Context, botId: String): Result<ExportResult> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("export_logs", botId)))
+            requireOk(obj)
+            ExportResult.fromJson(obj)
+        }
+
     // ── lifecycle actions ───────────────────────────────────────────────────
 
     suspend fun start(context: Context, botId: String): Result<Boolean> =

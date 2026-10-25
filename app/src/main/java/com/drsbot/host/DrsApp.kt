@@ -15,17 +15,28 @@ class DrsApp : Application() {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_HOST,
-            "Bot host",
+            getString(R.string.notif_channel_host),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Persistent status of the bot hosting service"
+            description = getString(R.string.notif_channel_host_desc)
             setShowBadge(false)
         }
         manager.createNotificationChannel(channel)
+
+        val alerts = NotificationChannel(
+            CHANNEL_ALERTS,
+            getString(R.string.notif_channel_alerts),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = getString(R.string.notif_channel_alerts_desc)
+        }
+        manager.createNotificationChannel(alerts)
     }
 
     companion object {
         const val CHANNEL_HOST = "bot_host"
+        const val CHANNEL_ALERTS = "bot_alerts"
         const val NOTIFICATION_HOST_ID = 1001
+        const val NOTIFICATION_ALERT_BASE_ID = 2001
     }
 }

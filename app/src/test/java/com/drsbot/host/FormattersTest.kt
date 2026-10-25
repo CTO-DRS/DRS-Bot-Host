@@ -20,4 +20,15 @@ class FormattersTest {
         assertEquals("1h 01m", com.drsbot.host.util.Formatters.formatDuration(3_675))
         assertEquals("0s", com.drsbot.host.util.Formatters.formatDuration(-7))
     }
+
+    @Test
+    fun formatUptime_handlesNullAndValues() {
+        assertEquals("--", com.drsbot.host.util.Formatters.formatUptime(null))
+        assertEquals("--", com.drsbot.host.util.Formatters.formatUptime(-1.0))
+        assertEquals("--", com.drsbot.host.util.Formatters.formatUptime(Double.NaN))
+        assertEquals("42s", com.drsbot.host.util.Formatters.formatUptime(42.7))
+        assertEquals("1m 05s", com.drsbot.host.util.Formatters.formatUptime(65.2))
+        assertEquals("1h 01m", com.drsbot.host.util.Formatters.formatUptime(3_675.0))
+        assertEquals("0s", com.drsbot.host.util.Formatters.formatUptime(0.0))
+    }
 }

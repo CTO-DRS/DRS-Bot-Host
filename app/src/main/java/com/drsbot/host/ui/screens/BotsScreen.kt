@@ -11,13 +11,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -27,9 +34,14 @@ import com.drsbot.host.R
 import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.ui.components.GlassCard
 import com.drsbot.host.ui.components.GlowBackground
+import com.drsbot.host.ui.components.NeonButton
 import com.drsbot.host.ui.components.StatusChip
 import com.drsbot.host.ui.theme.NeonRed
+import com.drsbot.host.ui.theme.TextSecondary
+import com.drsbot.host.util.Formatters
 import com.drsbot.host.vm.BotsViewModel
+
+private val ACTIVE_STATES = setOf("RUNNING", "STARTING", "BACKOFF", "STOPPING")
 
 @Composable
 fun BotsScreen(onOpenBot: (String) -> Unit) {
@@ -40,6 +52,22 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
     val bots by vm.bots.collectAsState()
     val loadError by vm.loadError.collectAsState()
     val actionMessage by vm.actionMessage.collectAsState()
+
+    var query by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf("ALL") }
+
+    val filtered = bots.filter { bot ->
+        val matchesQuery = query.isBlank() ||
+            bot.name.contains(query, ignoreCase = true) ||
+            bot.id.contains(query, ignoreCase = true)
+        val matchesFilter = when (filter) {
+            "ACTIVE" -> bot.state in ACTIVE_STATES
+            "STOPPED" -> bot.state == "STOPPED" || bot.state == "COMPLETED"
+            "FAILED" -> bot.state == "FAILED"
+            else -> true
+        }
+        matchesQuery && matchesFilter
+    }
 
     GlowBackground {
         LazyColumn(
@@ -55,6 +83,54 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
                     style = MaterialTheme.typography.headlineMedium,
                 )
             }
+
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.bots_search_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        "ALL" to R.string.filter_all,
+                        "ACTIVE" to R.string.filter_active,
+                        "STOPPED" to R.string.filter_stopped,
+                        "FAILED" to R.string.filter_failed,
+                    ).forEach { (key, labelRes) ->
+                        FilterChip(
+                            selected = filter == key,
+                            onClick = { filter = key },
+                            label = { Text(stringResource(labelRes)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor =
+                                MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    }
+                }
+            }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    NeonButton(
+                        text = stringResource(R.string.bots_start_all),
+                        onClick = { vm.startAll() },
+                    )
+                    OutlinedButton(onClick = { vm.stopAll() }) {
+                        Text(stringResource(R.string.dashboard_stop_all))
+                    }
+                }
+            }
+
             loadError?.let { error ->
                 item {
                     Text(text = error, color = NeonRed, style = MaterialTheme.typography.bodySmall)
@@ -70,7 +146,7 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
                     )
                 }
             }
-            if (bots.isEmpty()) {
+            if (filtered.isEmpty()) {
                 item {
                     GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -80,7 +156,7 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
                     }
                 }
             }
-            items(bots, key = { it.id }) { bot ->
+            items(filtered, key = { it.id }) { bot ->
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -96,6 +172,16 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
                                 text = "${bot.id} · v${bot.version} · ${bot.restartPolicy}",
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.bot_runs_uptime,
+                                    bot.runCount,
+                                    Formatters.formatUptime(bot.uptimeSeconds),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
                             if (!bot.lastError.isNullOrBlank()) {
                                 Spacer(Modifier.height(4.dp))
                                 Text(
@@ -106,18 +192,24 @@ fun BotsScreen(onOpenBot: (String) -> Unit) {
                                 )
                             }
                         }
-                        StatusChip(text = bot.state, color = stateColor(bot.state))
+                        StatusChip(
+                            text = bot.state,
+                            color = stateColor(bot.state),
+                            pulse = bot.state == "RUNNING",
+                        )
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (bot.state == "RUNNING" || bot.state == "STARTING" || bot.state == "BACKOFF") {
-                            Button(onClick = { vm.stop(bot.id) }) {
-                                Text(stringResource(R.string.bot_stop))
-                            }
+                        if (bot.state in ACTIVE_STATES) {
+                            NeonButton(
+                                text = stringResource(R.string.bot_stop),
+                                onClick = { vm.stop(bot.id) },
+                            )
                         } else {
-                            Button(onClick = { vm.start(bot.id) }) {
-                                Text(stringResource(R.string.bot_start))
-                            }
+                            NeonButton(
+                                text = stringResource(R.string.bot_start),
+                                onClick = { vm.start(bot.id) },
+                            )
                         }
                         OutlinedButton(onClick = { vm.restart(bot.id) }) {
                             Text(stringResource(R.string.bot_restart))

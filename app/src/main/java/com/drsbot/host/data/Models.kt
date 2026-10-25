@@ -20,6 +20,8 @@ data class BotStatus(
     val restartPolicy: String,
     val autoStart: Boolean,
     val restarts: Int,
+    val runCount: Int,
+    val uptimeSeconds: Double?,
     val progressValue: Int?,
     val progressTotal: Int?,
     val progressLabel: String?,
@@ -45,6 +47,12 @@ data class BotStatus(
                 } ?: "manual",
                 autoStart = o.optBoolean("auto_start", false),
                 restarts = o.optInt("restarts", 0),
+                runCount = o.optInt("run_count", 0),
+                uptimeSeconds = if (o.isNull("uptime_seconds")) {
+                    null
+                } else {
+                    o.optDouble("uptime_seconds").takeIf { !it.isNaN() }
+                },
                 progressValue = progress?.optNullableInt("value"),
                 progressTotal = progress?.optNullableInt("total"),
                 progressLabel = progress?.optString("label")?.takeIf { it.isNotBlank() },
@@ -100,11 +108,61 @@ data class ImportResult(
     }
 }
 
+/** Fleet-wide aggregates produced by host_stats() (v1.1). */
+data class HostStats(
+    val total: Int,
+    val running: Int,
+    val failed: Int,
+    val restarts: Int,
+    val runs: Int,
+    val uptimeSeconds: Double,
+    val byState: Map<String, Int>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): HostStats {
+            val byState = mutableMapOf<String, Int>()
+            o.optJSONObject("by_state")?.let { obj ->
+                val keys = obj.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    byState[key] = obj.optInt(key, 0)
+                }
+            }
+            return HostStats(
+                total = o.optInt("total", 0),
+                running = o.optInt("running", 0),
+                failed = o.optInt("failed", 0),
+                restarts = o.optInt("restarts", 0),
+                runs = o.optInt("runs", 0),
+                uptimeSeconds = o.optDouble("uptime_seconds", 0.0),
+                byState = byState,
+            )
+        }
+    }
+}
+
+/** Result of export_logs(): a zip bundle path under the host data dir. */
+data class ExportResult(
+    val path: String,
+    val files: Int,
+    val bytes: Long,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): ExportResult = ExportResult(
+            path = o.optString("path"),
+            files = o.optInt("files", 0),
+            bytes = o.optLong("bytes", 0),
+        )
+    }
+}
+
 /** User-facing host settings, persisted with DataStore. */
 data class HostSettings(
     val startServiceOnBoot: Boolean = false,
     val autoStartBots: Boolean = true,
     val keepCpuAwake: Boolean = true,
+    val crashAlerts: Boolean = true,
+    val accent: String = "cyan",
 )
 
 /** Metadata about the embedded Python runtime (Settings screen). */

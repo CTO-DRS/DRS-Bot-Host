@@ -21,7 +21,13 @@ class SettingsViewModel(
     private val repository = HostGraph.repository
 
     private val _settings = MutableStateFlow(
-        HostSettings(startServiceOnBoot = false, autoStartBots = true, keepCpuAwake = true),
+        HostSettings(
+            startServiceOnBoot = false,
+            autoStartBots = true,
+            keepCpuAwake = true,
+            crashAlerts = true,
+            accent = "cyan",
+        ),
     )
     val settings: StateFlow<HostSettings> = _settings.asStateFlow()
 
@@ -61,5 +67,13 @@ class SettingsViewModel(
 
     fun setKeepCpuAwake(enabled: Boolean) = viewModelScope.launch {
         settingsStore.setKeepCpuAwake(enabled)
+    }
+
+    fun setCrashAlerts(enabled: Boolean) = viewModelScope.launch {
+        settingsStore.setCrashAlerts(enabled)
+    }
+
+    fun setAccent(key: String) = viewModelScope.launch {
+        settingsStore.setAccent(key)
     }
 }

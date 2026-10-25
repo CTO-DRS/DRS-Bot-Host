@@ -30,4 +30,10 @@ object Formatters {
             else -> String.format(Locale.US, "%ds", secs)
         }
     }
+
+    /** 42.7 -> "42s"; 65.0 -> "1m 05s"; null -> "--". */
+    fun formatUptime(seconds: Double?): String {
+        if (seconds == null || seconds.isNaN() || seconds < 0) return "--"
+        return formatDuration(seconds.toLong())
+    }
 }

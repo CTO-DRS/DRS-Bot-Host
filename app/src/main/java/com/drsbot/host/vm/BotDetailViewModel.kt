@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.BotStatus
+import com.drsbot.host.data.ExportResult
 import com.drsbot.host.data.LogRecord
 import com.drsbot.host.data.RequirementsCheck
 import com.drsbot.host.di.HostGraph
@@ -18,6 +19,8 @@ data class BotDetailState(
     val logs: List<LogRecord> = emptyList(),
     val requirements: RequirementsCheck? = null,
     val error: String? = null,
+    val export: ExportResult? = null,
+    val exportError: String? = null,
 )
 
 /** Polls one bot's status + logs for the detail screen. */
@@ -62,6 +65,19 @@ class BotDetailViewModel(
         viewModelScope.launch {
             val result = repository.remove(appContext, botId)
             if (result.getOrDefault(false)) onRemoved() else refresh()
+        }
+    }
+
+    /** Zip the bot's JSONL logs; the result path is shown + copyable in the UI. */
+    fun exportLogs() {
+        viewModelScope.launch {
+            repository.exportLogs(appContext, botId)
+                .onSuccess { result ->
+                    _state.value = _state.value.copy(export = result, exportError = null)
+                }
+                .onFailure { failure ->
+                    _state.value = _state.value.copy(exportError = failure.message)
+                }
         }
     }
 

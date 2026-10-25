@@ -3,6 +3,7 @@ package com.drsbot.host.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -20,6 +21,8 @@ class SettingsStore private constructor(private val context: Context) {
             startServiceOnBoot = prefs[KEY_START_ON_BOOT] ?: false,
             autoStartBots = prefs[KEY_AUTO_START_BOTS] ?: true,
             keepCpuAwake = prefs[KEY_KEEP_CPU_AWAKE] ?: true,
+            crashAlerts = prefs[KEY_CRASH_ALERTS] ?: true,
+            accent = prefs[KEY_ACCENT] ?: "cyan",
         )
     }
 
@@ -35,10 +38,20 @@ class SettingsStore private constructor(private val context: Context) {
         context.dataStore.edit { it[KEY_KEEP_CPU_AWAKE] = enabled }
     }
 
+    suspend fun setCrashAlerts(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_CRASH_ALERTS] = enabled }
+    }
+
+    suspend fun setAccent(key: String) {
+        context.dataStore.edit { it[KEY_ACCENT] = key }
+    }
+
     companion object {
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_service_on_boot")
         private val KEY_AUTO_START_BOTS = booleanPreferencesKey("auto_start_bots")
         private val KEY_KEEP_CPU_AWAKE = booleanPreferencesKey("keep_cpu_awake")
+        private val KEY_CRASH_ALERTS = booleanPreferencesKey("crash_alerts")
+        private val KEY_ACCENT = stringPreferencesKey("accent_color")
 
         @Volatile
         private var instance: SettingsStore? = null
