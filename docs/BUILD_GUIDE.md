@@ -19,7 +19,7 @@
 
 المتطلبات:
 - JDK 17 (Temurin مثلاً)
-- Gradle 8.9 (أو استخدم wrapper — انظر ملاحظة)
+- Gradle 8.11.1 (أو استخدم wrapper — انظر ملاحظة)
 - Android SDK: platform 35 + build-tools (يثبّتها Android Studio تلقائيًا)
 - **Python 3.12** على PATH — شرط Chaquopy 17 (يجب أن يطابق إصدار `version = "3.12"`)
 
@@ -27,7 +27,7 @@
 
 ```bash
 # 1) توليد الـ wrapper مرة واحدة (غير مضمّن في المستودع عمدًا)
-gradle wrapper --gradle-version 8.9
+gradle wrapper --gradle-version 8.11.1
 
 # 2) بناء نسخة debug
 ./gradlew :app:assembleDebug

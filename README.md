@@ -63,7 +63,7 @@ PYTHONPATH=src python3 -m drs_host.cli --data-dir /tmp/drs \
 ## Build the APK
 
 Easiest: push to GitHub → CI artifact `drs-bot-host-debug-apk`.
-Local build requirements (JDK 17, Gradle 8.9, Android SDK, Python 3.12):
+Local build requirements (JDK 17, Gradle 8.11.1, Android SDK, Python 3.12):
 see **docs/BUILD_GUIDE.md**. User manual (Arabic): **docs/USER_MANUAL_AR.md**.
 Bot contract: **docs/BOT_SPEC.md**.
 

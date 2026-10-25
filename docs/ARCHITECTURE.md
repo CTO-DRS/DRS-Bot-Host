@@ -96,5 +96,5 @@ stop_bot(id):
   أبسط وأكثر متانة (حجم السجل ≤ 400 سجل في الذاكرة للعرض).
 - **بدون Room**: مصدر الحقيقة الوحيد هو مخزن بايثون (`botdata/bots/`) —
   طبقة بيانات واحدة لا طبقتان يمكن أن تختلفا.
-- **Gradle بدون wrapper في v1.0**: CI يثبت Gradle 8.9 صراحة؛ محليًا
-  `gradle wrapper --gradle-version 8.9` (موثق في BUILD_GUIDE).
+- **Gradle بدون wrapper في v1.0**: CI يثبت Gradle 8.11.1 صراحة؛ محليًا
+  `gradle wrapper --gradle-version 8.11.1` (موثق في BUILD_GUIDE).
