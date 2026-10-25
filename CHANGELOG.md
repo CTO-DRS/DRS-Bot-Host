@@ -3,6 +3,47 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] — 2026-10-25
+
+Modern tech-focused visual overhaul + feature batch.
+
+### Added — Python runtime core (verified locally, 62/62 pytest)
+- `host_stats()`: fleet aggregates (total / by state / running / failed /
+  restarts / runs) + host uptime, exposed on the dashboard KPI tiles.
+- Per-bot metrics: `run_count` and `uptime_seconds` (live while running,
+  last-run duration once terminal) in every status payload.
+- `export_logs(bot_id)`: bundles a bot's JSONL logs into a timestamped zip
+  under `<data_dir>/exports/`.
+- `set_bot_config(bot_id, config)`: replace a bot's `config` object at
+  runtime (dict or JSON string); validated through the full manifest
+  validator, persisted to `bot.json`, applied on next start.
+- `drs_host.scaffold.scaffold_bot(name, dest)`: generates a ready-to-import
+  sample bot (bot.json + main.py + README) from a free-form name; new CLI
+  commands `stats`, `scaffold`, `export-logs`, `set-config`.
+- 12 new tests (62 total) including an end-to-end
+  scaffold → import → reconfigure → run → stop cycle.
+
+### Added — Android app
+- User-selectable accent color (cyan / violet / mint / amber) persisted in
+  DataStore and applied app-wide instantly.
+- Animated tech backdrop: engineering grid, drifting neon orbs, scanline
+  sweep; `GlassCard` accent borders, gradient `NeonButton`, KPI `StatTile`,
+  `SectionHeader`, status chips with a live pulse dot.
+- Dashboard: KPI tile row, host service card with start-all / stop-all,
+  system telemetry card (battery, memory, host uptime).
+- Bots screen: live search by name/id, state filter chips (all / active /
+  stopped / failed), bulk start-all / stop-all, per-bot uptime + run count.
+- Bot detail: statistics card (uptime / runs / restarts / policy) and
+  one-tap log export with copy-to-clipboard path.
+- Settings: appearance section, crash-alerts toggle with Android 13+
+  runtime permission request, About card (version, repository, releases).
+- `BotHostService` posts a failure notification (dedicated channel) the
+  first time each bot enters `FAILED`; honours the crash-alerts toggle and
+  checks POST_NOTIFICATIONS on API 33+.
+
+### Changed
+- versionCode 2, versionName 1.1.0; `buildConfig` feature enabled.
+
 ## [1.0.0] — 2026-10-25
 
 First public engineering release (source complete; APK produced by GitHub Actions).
