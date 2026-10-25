@@ -85,46 +85,50 @@ def test_host_api_skills_endpoints(data_dir):
 # Installer                                                              #
 # --------------------------------------------------------------------- #
 
-MICRO_PKG_SETUP = """\
-[build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "drs-micropkg"
-version = "0.1.0"
-description = "micro package for drs_host installer tests"
-
-[tool.setuptools]
-packages = ["drs_micropkg"]
-"""
-
 MICRO_PKG_MODULE = """\
 MARKER = "drs-micropkg-installed-ok"
 VERSION = "0.1.0"
 """
 
 
+def _build_micro_wheel(house: Path) -> Path:
+    """Hand-roll a valid pure-Python wheel (no build backend needed).
+
+    GitHub Actions' hosted Python 3.12 no longer ships setuptools, so the
+    fixture avoids ``pip wheel`` entirely: a wheel is just a zip with a
+    ``.dist-info`` directory, and pip installs it happily from a
+    ``--find-links`` directory.
+    """
+    import zipfile
+
+    wheel_path = house / "drs_micropkg-0.1.0-py3-none-any.whl"
+    dist = "drs_micropkg-0.1.0.dist-info/"
+    with zipfile.ZipFile(wheel_path, "w") as archive:
+        archive.writestr("drs_micropkg/__init__.py", MICRO_PKG_MODULE)
+        archive.writestr(
+            dist + "METADATA",
+            "Metadata-Version: 2.1\nName: drs-micropkg\nVersion: 0.1.0\n"
+            "Summary: micro package for drs_host installer tests\n",
+        )
+        archive.writestr(
+            dist + "WHEEL",
+            "Wheel-Version: 1.0\nGenerator: drs-test\n"
+            "Root-Is-Purelib: true\nTag: py3-none-any\n",
+        )
+        archive.writestr(
+            dist + "RECORD",
+            "drs_micropkg/__init__.py,,\n"
+            f"{dist}METADATA,,\n"
+            f"{dist}WHEEL,,\n"
+            f"{dist}RECORD,,\n",
+        )
+    return wheel_path
+
+
 @pytest.fixture(scope="module")
 def micro_pkg_wheelhouse(tmp_path_factory):
-    """Build a tiny wheel locally so the pip install is offline-deterministic."""
-    source = tmp_path_factory.mktemp("micropkg")
-    (source / "pyproject.toml").write_text(MICRO_PKG_SETUP, encoding="utf-8")
-    package_dir = source / "drs_micropkg"
-    package_dir.mkdir()
-    (package_dir / "__init__.py").write_text(MICRO_PKG_MODULE, encoding="utf-8")
-    house = tmp_path_factory.mktemp("wheelhouse")
-    completed = subprocess.run(
-        [
-            sys.executable, "-m", "pip", "wheel",
-            "--no-deps", "--no-build-isolation", "-w", str(house), str(source),
-        ],
-        capture_output=True, text=True, timeout=120,
-    )
-    assert completed.returncode == 0, completed.stderr[-2000:]
-    wheels = list(house.glob("*.whl"))
-    assert wheels, "wheel build produced no artifacts"
-    return house
+    """Directory containing the micro package wheel for --find-links."""
+    return _build_micro_wheel(tmp_path_factory.mktemp("wheelhouse")).parent
 
 
 def test_pip_probe_true_on_desktop():
