@@ -99,6 +99,12 @@ val syncPythonRuntime = tasks.register<Copy>("syncPythonRuntime") {
     into(layout.projectDirectory.dir("src/main/python"))
 }
 
-tasks.matching { it.name == "preBuild" }.configureEach {
+// preBuild covers the classic path; Chaquopy's merge<Variant>PythonSources
+// reads src/main/python directly, so Gradle 8+ requires the dependency to be
+// declared explicitly (implicit-dependency validation error otherwise).
+tasks.matching { task ->
+    task.name == "preBuild" ||
+        (task.name.startsWith("merge") && task.name.endsWith("PythonSources"))
+}.configureEach {
     dependsOn(syncPythonRuntime)
 }
