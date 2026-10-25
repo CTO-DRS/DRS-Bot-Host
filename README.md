@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.3.0-blue)
+![version](https://img.shields.io/badge/version-1.4.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.3.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.3.0/DRS-Bot-Host-v1.3.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.4.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/DRS-Bot-Host-v1.4.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -122,11 +122,32 @@ Bot contract: **docs/BOT_SPEC.md**.
 > Chaquopy the app keeps thread mode (probed at runtime, honestly reported
 > in each bot's log). Termux-style binaries remain future work.
 
-## Roadmap (post-1.3)
+## What shipped in v1.4
 
-- Termux-style standalone Python binaries for on-device process isolation.
-- Token management UI for the status page + HTTPS support.
-- Bot marketplace: share/import curated bots by URL.
+- **Bot market** (new tab): a curated registry of ready-to-run bots
+  (`registry/registry.json` in this repo), fetched and strictly validated
+  by `drs_host.marketplace` — slug ids, http/https URLs, field limits,
+  unknown keys dropped. Installs ride the same hardened
+  download→import pipeline as a manual URL import; a registry entry gains
+  no new privileges. The first registry ships three stdlib-only bots
+  (**echo-bot**, **config-demo**, **webhook-receiver**), each verified by a
+  real supervised run before publishing.
+- **Fleet backup & restore** (`drs_host.backup`): one zip with every bot's
+  sources + manifest + `backup.json` metadata (logs and pip site-dirs
+  excluded). Restore requires the metadata manifest and re-imports every
+  bot through the full validation pipeline. One tap each in Settings.
+- **Status-page token management + TLS**: a masked access-token field in
+  Settings (changing it restarts the server), the real LAN IP + scheme in
+  the URL display, and optional https with user-supplied PEM certificates
+  (`serve-status --cert/--key` or the API).
+- Fixed: the Import screen rendered the skill-templates card twice.
+
+## Roadmap (post-1.4)
+
+- Termux-style standalone Python binaries for on-device process isolation
+  (needs ~30 MB of bundled runtime per ABI — deliberately not faked).
+- In-app marketplace registry editor / community registries.
+- Per-bot health checks (HTTP probe / custom command) with auto-recovery.
 
 <div dir="rtl">
 

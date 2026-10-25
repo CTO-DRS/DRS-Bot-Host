@@ -1,0 +1,42 @@
+{
+  "name": "DRS Bot Host curated registry",
+  "description": "Ready-to-run bots verified by the DRS Bot Host CI. Install straight from the app's Market tab.",
+  "bots": [
+    {
+      "id": "echo-bot",
+      "name": "Echo Bot",
+      "description": "Heartbeat demo bot: logs a line every second until stopped.",
+      "version": "1.0.0",
+      "author": "DRS",
+      "tags": [
+        "curated",
+        "stdlib-only"
+      ],
+      "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/echo-bot.zip"
+    },
+    {
+      "id": "config-demo",
+      "name": "Config Demo",
+      "description": "Shows how a bot reads its config section and reports progress.",
+      "version": "1.0.0",
+      "author": "DRS",
+      "tags": [
+        "curated",
+        "stdlib-only"
+      ],
+      "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/config-demo.zip"
+    },
+    {
+      "id": "webhook-receiver",
+      "name": "Webhook Receiver",
+      "description": "Tiny HTTP server that logs every POST - test webhooks on your phone. Stdlib only.",
+      "version": "0.1.0",
+      "author": "DRS Bot Host contributors",
+      "tags": [
+        "curated",
+        "stdlib-only"
+      ],
+      "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/webhook-receiver.zip"
+    }
+  ]
+}

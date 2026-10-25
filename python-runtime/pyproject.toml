@@ -1,6 +1,6 @@
 [project]
 name = "drs-host"
-version = "1.0.0"
+version = "1.4.0"
 description = "DRS Bot Host runtime core: bot manifests, safe importer, supervisor and SDK for Python bots"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

@@ -1,3 +1,60 @@
+## [1.4.0] — 2026-10-26
+
+Marketplace + fleet backup + status-page security: the post-1.3 roadmap
+(minus standalone Python binaries, still honestly future work).
+
+### Added — Python runtime core (verified locally, 125/125 pytest)
+- **Bot marketplace** (`drs_host.marketplace`): fetch a curated registry
+  over http(s) with a 1 MB cap and strict per-entry validation (slug ids,
+  http/https urls, field-length limits, unknown keys dropped, duplicate
+  ids rejected). `install_entry()` routes the entry's zip through the same
+  hardened downloader/importer as every manual import — a registry grants
+  no new privileges. Exposed as `marketplace_fetch` / `marketplace_install`
+  and CLI `market` / `market-install`.
+- **Fleet backup & restore** (`drs_host.backup`): `backup_all()` zips every
+  installed bot (sources + manifest; logs, `__pycache__` and pip site-dirs
+  excluded) with a `backup.json` metadata manifest into
+  `<data>/backups/drs-backup-<stamp>.zip`. `restore_backup()` requires that
+  metadata (a random zip cannot pose as a backup) and re-imports each bot
+  folder through `Supervisor.import_folder` — full manifest validation,
+  extension whitelist, size limits, overwrite guard. Exposed as
+  `backup_all` / `restore_backup` and CLI `backup` / `restore`.
+- **Status-page TLS** (`drs_host.webstatus`): optional https via
+  user-supplied PEM `certfile` + `keyfile` (both-or-neither, existence
+  checked, honest errors). `web_status_start(port, token, certfile,
+  keyfile)`; `web_status_info()` reports `tls`. CLI `serve-status --cert
+  --key`. Certificates are user-supplied by design: the embedded Android
+  runtime does not ship a cert-generator.
+- 18 new tests (125 total): registry validation matrix, real fetches
+  against a local HTTP server (valid / oversized / invalid JSON / 404),
+  marketplace install round-trip incl. duplicate + overwrite semantics,
+  backup zip structure + exclusions, restore into a fresh host with the
+  restored bots actually running, foreign-zip + corrupt-zip rejections,
+  CLI backup/restore, TLS round-trip (self-signed cert) + partial/missing
+  file rejections, plain-http info fields.
+
+### Added — Android app (compile-verified by CI; no local SDK, stated honestly)
+- **Market tab** (new, Storefront icon): fetches the curated registry,
+  per-entry install buttons with busy states, overwrite checkbox, retry
+  card, per-entry warnings; installing navigates to the bot detail screen.
+- **Status-page token management**: masked access-token field (visibility
+  toggle) persisted in DataStore; changing it restarts the server
+  immediately (settings collector + foreground service both pass it to
+  `web_status_start`). The running URL now shows the device's real
+  site-local IPv4 and the correct http/https scheme from
+  `web_status_info().tls`.
+- **Backup & restore card** in Settings: one-tap fleet backup (result path
+  shown) and SAF-picked restore, with inline success/error feedback.
+- BUGFIX: ImportScreen rendered the entire skills card twice (copy-paste
+  error introduced in v1.3).
+- versionCode 5, versionName 1.4.0; strings in English + Arabic.
+
+### Curated registry (in-repo, served to the Market tab)
+- `registry/registry.json` lists three stdlib-only bots published as
+  release assets on v1.4.0: **echo-bot**, **config-demo** and
+  **webhook-receiver** — each verified by a real supervised CLI run before
+  publishing.
+
 ## [1.3.0] — 2026-10-26
 
 "All skills" delivery: the remaining post-1.2 roadmap plus a skill template
