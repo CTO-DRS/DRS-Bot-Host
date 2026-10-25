@@ -62,7 +62,7 @@
     <string name="bot_schedule_active">Inside an active window</string>
     <string name="bot_schedule_disabled">Schedule paused</string>
     <string name="bot_config_section">Config editor</string>
-    <string name="bot_config_hint">Edit the bot's config JSON (validated by the host, applied on next start).</string>
+    <string name="bot_config_hint">Edit the bot config JSON (validated by the host; applied on next start).</string>
     <string name="bot_config_save">Save config</string>
     <string name="import_url_title">Import from URL</string>
     <string name="import_url_note">Downloads a bot zip over HTTPS. GitHub links work: a repo URL (default branch), a /tree/BRANCH link, or a direct .zip.</string>
