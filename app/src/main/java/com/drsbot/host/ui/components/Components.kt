@@ -112,6 +112,7 @@ fun GlowBackground(
             .fillMaxSize()
             .background(DeepSpace),
     ) {
+        val accentColor = MaterialTheme.colorScheme.primary
         Canvas(modifier = Modifier.matchParentSize()) {
             // Engineering grid.
             val step = 28.dp.toPx()
@@ -130,7 +131,7 @@ fun GlowBackground(
 
             // Two neon orbs orbiting their anchors.
             val radius = size.minDimension * 0.55f
-            val cyan = MaterialTheme.colorScheme.primary
+            val cyan = accentColor
             val orbAX = size.width * (0.82f + 0.08f * kotlin.math.sin(drift))
             val orbAY = size.height * (0.10f + 0.05f * kotlin.math.cos(drift * 1.3f))
             drawCircle(
