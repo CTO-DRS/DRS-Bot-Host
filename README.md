@@ -32,10 +32,10 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, host_api, cli | ✅ **51/51 pytest passing** (locally executed), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, host_api, cli | ✅ **51/51 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop) | ✅ Executed locally via `drs_host.cli` |
-| Android app (`app/`): Compose UI, service, PyBridge | ⏳ Source complete; **not compiled locally** (sandbox has no Android SDK) — built & unit-tested by CI on push |
-| CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ⏳ Defined; validates on first push |
+| Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
+| CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (~34 MB, embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact |
 
 ## Repository layout
 

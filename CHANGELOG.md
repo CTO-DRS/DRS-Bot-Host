@@ -22,7 +22,7 @@ First public engineering release (source complete; APK produced by GitHub Action
   `set_progress()` (`drs_host.sdk`).
 - `drs_host.host_api` facade consumed by the Android app (via Chaquopy) and the CLI.
 - CLI for desktop verification: `python -m drs_host.cli info|list|import|run|stop`.
-- 44 pytest tests covering manifest, importer, streams, supervisor, host API.
+- 51 pytest tests covering manifest, importer, streams, supervisor, host API.
 
 ### Added — Android app (`app/`, Kotlin + Jetpack Compose, built in CI)
 - Native Kotlin + Compose UI, dark futuristic glass theme (neon cyan/violet accents).
@@ -31,7 +31,10 @@ First public engineering release (source complete; APK produced by GitHub Action
 - Foreground service `BotHostService` (`specialUse` type) with persistent notification,
   partial wake lock, stop-all action and optional boot autostart.
 - Python hosting via Chaquopy 17.1.0 (Python 3.12 embedded).
-- DataStore-backed settings, POST_NOTIFICATIONS handling, battery-optimization exemption.
+- DataStore-backed settings (SettingsStore), POST_NOTIFICATIONS handling, battery-optimization exemption.
+- Kotlin data layer: BotRepository (suspend API over the PyBridge JSON facade),
+  typed models mirroring host_api dicts (BotStatus, LogRecord, RequirementsCheck,
+  ImportResult, RuntimeInfo), SettingsStore with DataStore.
 
 ### Added — Project infrastructure
 - GitHub Actions CI: pytest matrix (3.10/3.11/3.12) + Android `assembleDebug`
