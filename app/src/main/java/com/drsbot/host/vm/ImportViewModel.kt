@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.ImportResult
+import com.drsbot.host.data.SkillInfo
 import com.drsbot.host.di.HostGraph
 import com.drsbot.host.util.SafIo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,53 @@ class ImportViewModel(private val appContext: Context) : ViewModel() {
 
     private val _overwrite = MutableStateFlow(false)
     val overwrite: StateFlow<Boolean> = _overwrite.asStateFlow()
+
+    private val _skills = MutableStateFlow<List<SkillInfo>>(emptyList())
+    val skills: StateFlow<List<SkillInfo>> = _skills.asStateFlow()
+
+    init {
+        refreshSkills()
+    }
+
+    /** One-tap bot templates (v1.3 skill registry). */
+    fun refreshSkills() {
+        viewModelScope.launch {
+            _skills.value = HostGraph.repository.listSkills(appContext).getOrDefault(emptyList())
+        }
+    }
+
+    /** Materialises a skill template into the cache and imports it. */
+    fun createFromSkill(skill: SkillInfo) {
+        _state.value = ImportUiState.Working
+        viewModelScope.launch {
+            val result = runCatching {
+                val dest = File(appContext.cacheDir, "skill-${System.currentTimeMillis()}")
+                try {
+                    val scaffolded = HostGraph.repository
+                        .scaffoldSkill(appContext, skill.key, skill.title, dest)
+                        .getOrThrow()
+                    if (!scaffolded.ok) {
+                        throw IllegalStateException(
+                            scaffolded.errors.joinToString("; ").ifBlank { "scaffold rejected" },
+                        )
+                    }
+                    val folder = File(scaffolded.path!!)
+                    try {
+                        HostGraph.repository.importFolder(appContext, folder, overwrite = true)
+                            .getOrThrow()
+                    } finally {
+                        folder.deleteRecursively()
+                    }
+                } finally {
+                    dest.parentFile?.let { parent ->
+                        parent.listFiles { f -> f.name.startsWith("skill-") }
+                            ?.forEach { it.deleteRecursively() }
+                    }
+                }
+            }
+            publish(result)
+        }
+    }
 
     fun setOverwrite(enabled: Boolean) {
         _overwrite.value = enabled

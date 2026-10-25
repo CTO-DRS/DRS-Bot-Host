@@ -3,6 +3,7 @@ package com.drsbot.host.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,8 @@ class SettingsStore private constructor(private val context: Context) {
             crashAlerts = prefs[KEY_CRASH_ALERTS] ?: true,
             accent = prefs[KEY_ACCENT] ?: "cyan",
             requirementsPolicy = prefs[KEY_REQUIREMENTS_POLICY] ?: "warn",
+            webStatusEnabled = prefs[KEY_WEB_STATUS_ENABLED] ?: false,
+            webStatusPort = prefs[KEY_WEB_STATUS_PORT] ?: 8090,
         )
     }
 
@@ -51,6 +54,14 @@ class SettingsStore private constructor(private val context: Context) {
         context.dataStore.edit { it[KEY_REQUIREMENTS_POLICY] = policy }
     }
 
+    suspend fun setWebStatusEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_WEB_STATUS_ENABLED] = enabled }
+    }
+
+    suspend fun setWebStatusPort(port: Int) {
+        context.dataStore.edit { it[KEY_WEB_STATUS_PORT] = port }
+    }
+
     companion object {
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_service_on_boot")
         private val KEY_AUTO_START_BOTS = booleanPreferencesKey("auto_start_bots")
@@ -58,6 +69,8 @@ class SettingsStore private constructor(private val context: Context) {
         private val KEY_CRASH_ALERTS = booleanPreferencesKey("crash_alerts")
         private val KEY_ACCENT = stringPreferencesKey("accent_color")
         private val KEY_REQUIREMENTS_POLICY = stringPreferencesKey("requirements_policy")
+        private val KEY_WEB_STATUS_ENABLED = booleanPreferencesKey("web_status_enabled")
+        private val KEY_WEB_STATUS_PORT = intPreferencesKey("web_status_port")
 
         @Volatile
         private var instance: SettingsStore? = null

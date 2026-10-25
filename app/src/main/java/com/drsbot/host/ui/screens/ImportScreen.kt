@@ -33,6 +33,7 @@ import com.drsbot.host.LocalAppContext
 import com.drsbot.host.R
 import com.drsbot.host.ui.components.GlassCard
 import com.drsbot.host.ui.components.GlowBackground
+import com.drsbot.host.ui.theme.NeonAmber
 import com.drsbot.host.ui.theme.NeonMint
 import com.drsbot.host.ui.theme.NeonRed
 import com.drsbot.host.vm.ImportUiState
@@ -77,6 +78,62 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 text = stringResource(R.string.import_title),
                 style = MaterialTheme.typography.headlineMedium,
             )
+
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                Text(
+                    text = stringResource(R.string.import_skills_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.import_skills_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                val skills = vm.skills.collectAsState().value
+                if (skills.isEmpty()) {
+                    Text("...", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    skills.forEach { skill ->
+                        SkillRow(
+                            title = skill.title,
+                            description = skill.description,
+                            requires = skill.requirements.joinToString(", "),
+                            enabled = state !is ImportUiState.Working,
+                            onCreate = { vm.createFromSkill(skill) },
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                Text(
+                    text = stringResource(R.string.import_skills_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.import_skills_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                val skills = vm.skills.collectAsState().value
+                if (skills.isEmpty()) {
+                    Text("...", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    skills.forEach { skill ->
+                        SkillRow(
+                            title = skill.title,
+                            description = skill.description,
+                            requires = skill.requirements.joinToString(", "),
+                            enabled = state !is ImportUiState.Working,
+                            onCreate = { vm.createFromSkill(skill) },
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -173,6 +230,31 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 else -> Unit
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun SkillRow(
+    title: String,
+    description: String,
+    requires: String,
+    enabled: Boolean,
+    onCreate: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Text(description, style = MaterialTheme.typography.bodySmall)
+        if (requires.isNotBlank()) {
+            Text(
+                text = stringResource(R.string.import_skills_requires, requires),
+                color = NeonAmber,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Button(onClick = onCreate, enabled = enabled) {
+            Text(stringResource(R.string.import_skills_create))
         }
     }
 }

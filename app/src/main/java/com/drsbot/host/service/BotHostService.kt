@@ -63,6 +63,7 @@ class BotHostService : LifecycleService() {
                     if (snapshot.keepCpuAwake) {
                         acquireWakeLock()
                     }
+                    syncWebStatus(snapshot.webStatusEnabled, snapshot.webStatusPort)
                 }
             }
         }
@@ -73,8 +74,9 @@ class BotHostService : LifecycleService() {
         lifecycleScope.launch {
             val repository = HostGraph.repository
             launch {
-                SettingsStore.get(applicationContext).settings.collect {
-                    alertsEnabled = it.crashAlerts
+                SettingsStore.get(applicationContext).settings.collect { settings ->
+                    alertsEnabled = settings.crashAlerts
+                    syncWebStatus(settings.webStatusEnabled, settings.webStatusPort)
                 }
             }
             while (true) {
@@ -133,6 +135,20 @@ class BotHostService : LifecycleService() {
                 DrsApp.NOTIFICATION_ALERT_BASE_ID + (botId.hashCode() and 0x7fffffff) % 100_000,
                 notification,
             )
+        }
+    }
+
+    /** Start/stop the LAN fleet status page according to user settings. */
+    private fun syncWebStatus(enabled: Boolean, port: Int) {
+        lifecycleScope.launch {
+            if (enabled) {
+                HostGraph.repository.webStatusStart(applicationContext, port)
+                    .onFailure {
+                        android.util.Log.w("BotHostService", "web status start failed: ${it.message}")
+                    }
+            } else {
+                HostGraph.repository.webStatusStop(applicationContext)
+            }
         }
     }
 

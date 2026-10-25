@@ -73,6 +73,58 @@ class BotRepository {
             ExportResult.fromJson(obj)
         }
 
+    // ── v1.3: skills / installer / web status ─────────────────────────────
+
+    suspend fun listSkills(context: Context): Result<List<SkillInfo>> =
+        call(context) { api ->
+            val array = JSONArray(PyBridge.dumps(api.callAttr("list_skills")))
+            List(array.length()) { SkillInfo.fromJson(array.getJSONObject(it)) }
+        }
+
+    suspend fun scaffoldSkill(
+        context: Context,
+        skill: String,
+        name: String,
+        destDir: File,
+    ): Result<ScaffoldResult> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("scaffold_skill", skill, name, destDir.absolutePath)),
+        )
+        ScaffoldResult.fromJson(obj)
+    }
+
+    suspend fun installRequirements(context: Context, botId: String): Result<InstallResult> =
+        call(context) { api ->
+            val obj = JSONObject(
+                PyBridge.dumps(api.callAttr("install_bot_requirements", botId)),
+            )
+            InstallResult.fromJson(obj)
+        }
+
+    suspend fun webStatusStart(context: Context, port: Int): Result<WebStatusInfo> =
+        call(context) { api ->
+            val obj = JSONObject(
+                PyBridge.dumps(api.callAttr("web_status_start", port)),
+            )
+            if (!obj.optBoolean("ok", false)) {
+                throw IllegalStateException(obj.errorsMessage())
+            }
+            WebStatusInfo(running = true, port = obj.optInt("port", port), protected = false)
+        }
+
+    suspend fun webStatusStop(context: Context): Result<Boolean> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("web_status_stop")))
+            requireOk(obj)
+            true
+        }
+
+    suspend fun webStatusInfo(context: Context): Result<WebStatusInfo> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("web_status_info")))
+            WebStatusInfo.fromJson(obj)
+        }
+
     // ── lifecycle actions ───────────────────────────────────────────────────
 
     suspend fun start(context: Context, botId: String): Result<Boolean> =

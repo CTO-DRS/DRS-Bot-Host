@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.BotStatus
 import com.drsbot.host.data.ExportResult
+import com.drsbot.host.data.InstallResult
 import com.drsbot.host.data.LogRecord
 import com.drsbot.host.data.RequirementsCheck
 import com.drsbot.host.di.HostGraph
@@ -25,6 +26,9 @@ data class BotDetailState(
     val configText: String? = null,
     val configMessage: String? = null,
     val configError: Boolean = false,
+    val installing: Boolean = false,
+    val install: InstallResult? = null,
+    val installError: String? = null,
 )
 
 /** Polls one bot's status + logs for the detail screen. */
@@ -61,6 +65,10 @@ class BotDetailViewModel(
             configText = current.configText,
             configMessage = current.configMessage,
             configError = current.configError,
+            // keep transient installer state across polls
+            installing = current.installing,
+            install = current.install,
+            installError = current.installError,
         )
     }
 
@@ -100,6 +108,32 @@ class BotDetailViewModel(
     }
 
     fun start() = launchAction { repository.start(appContext, botId) }
+
+    /**
+     * pip-install the bot's declared requirements into its per-bot site dir
+     * (v1.3). Result (including pip output tail) is shown in the UI.
+     */
+    fun installRequirements() {
+        if (_state.value.installing) return
+        _state.value = _state.value.copy(installing = true, installError = null)
+        viewModelScope.launch {
+            repository.installRequirements(appContext, botId)
+                .onSuccess { result ->
+                    _state.value = _state.value.copy(
+                        installing = false,
+                        install = result,
+                        installError = null,
+                    )
+                    refresh()
+                }
+                .onFailure { failure ->
+                    _state.value = _state.value.copy(
+                        installing = false,
+                        installError = failure.message,
+                    )
+                }
+        }
+    }
 
     fun stop() = launchAction { repository.stop(appContext, botId) }
 

@@ -109,6 +109,20 @@
     <string name="req_policy_warn">تحذير</string>
     <string name="req_policy_enforce">إلزام</string>
     <string name="state_FORCE_STOPPED">إيقاف قسري</string>
+    <string name="import_skills_title">قوالب المهارات</string>
+    <string name="import_skills_note">بلمسة واحدة تُنشئ بوتًا جاهزًا للعمل من مهارة مُعدّة مسبقًا — عدّله لاحقًا كما تشاء.</string>
+    <string name="import_skills_create">إنشاء البوت</string>
+    <string name="import_skills_requires">يحتاج حزمًا: %1$s (ثبّتها من شاشة تفاصيل البوت)</string>
+    <string name="settings_web_status">صفحة الحالة عبر Wi-Fi</string>
+    <string name="settings_web_status_toggle">لوحة الأسطول على الشبكة المحلية</string>
+    <string name="settings_web_status_summary">تعرض صفحة حالة حيّة لكل البوتات على شبكة Wi-Fi المحلية (بمظهر داكن وواجهة JSON). معطّلة افتراضيًا.</string>
+    <string name="settings_web_status_port">المنفذ</string>
+    <string name="settings_web_status_running">تعمل على %1$s — افتحها من أي جهاز على الشبكة نفسها</string>
+    <string name="settings_web_status_starting">جارٍ تشغيل خادم الحالة…</string>
+    <string name="bot_install_button">تثبيت المتطلبات</string>
+    <string name="bot_install_running">جارٍ التثبيت…</string>
+    <string name="bot_install_ok">ثُبّتت في مجلد الحزم الخاص بهذا البوت: %1$s</string>
+
     <string name="state_STOPPED">متوقف</string>
     <string name="state_STARTING">بدء التشغيل</string>
     <string name="state_RUNNING">يعمل</string>

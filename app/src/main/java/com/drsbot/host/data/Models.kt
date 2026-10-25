@@ -31,6 +31,8 @@ data class BotStatus(
     val scheduleKind: String? = null,
     val scheduleEnabled: Boolean = false,
     val scheduleNextStartAt: Double? = null,
+    val isolation: String = "thread",
+    val isolationEffective: String = "thread",
     val configJson: String = "{}",
 ) {
     /** Mirrors BotState.TERMINAL on the Python side. */
@@ -87,6 +89,8 @@ data class BotStatus(
                         ?.takeIf { !it.isNaN() }
                 },
                 configJson = o.optJSONObject("config")?.toString() ?: "{}",
+                isolation = o.optString("isolation", "thread"),
+                isolationEffective = o.optString("isolation_effective", "thread"),
             )
         }
     }
@@ -193,6 +197,74 @@ data class ExportResult(
     }
 }
 
+/** One skill template from the v1.3 skill registry. */
+data class SkillInfo(
+    val key: String,
+    val title: String,
+    val description: String,
+    val requirements: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): SkillInfo = SkillInfo(
+            key = o.optString("key"),
+            title = o.optString("title", o.optString("key")),
+            description = o.optString("description"),
+            requirements = o.optJSONArray("requirements").toStringList(),
+        )
+    }
+}
+
+/** Outcome of scaffold_skill(): a folder ready for import_folder. */
+data class ScaffoldResult(
+    val ok: Boolean,
+    val botId: String?,
+    val path: String,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): ScaffoldResult = ScaffoldResult(
+            ok = o.optBoolean("ok", false),
+            botId = o.optString("id").takeIf { it.isNotBlank() },
+            path = o.optString("path"),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** Outcome of install_bot_requirements(): per-bot pip install into its site dir. */
+data class InstallResult(
+    val ok: Boolean,
+    val installed: List<String>,
+    val target: String,
+    val outputTail: List<String>,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): InstallResult = InstallResult(
+            ok = o.optBoolean("ok", false),
+            installed = o.optJSONArray("installed").toStringList(),
+            target = o.optString("target"),
+            outputTail = o.optJSONArray("output_tail").toStringList(),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** Current state of the Wi-Fi status web server. */
+data class WebStatusInfo(
+    val running: Boolean,
+    val port: Int,
+    val protected: Boolean,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): WebStatusInfo = WebStatusInfo(
+            running = o.optBoolean("running", false),
+            port = o.optInt("port", 0),
+            protected = o.optBoolean("protected", false),
+        )
+    }
+}
+
 /** User-facing host settings, persisted with DataStore. */
 data class HostSettings(
     val startServiceOnBoot: Boolean = false,
@@ -201,6 +273,8 @@ data class HostSettings(
     val crashAlerts: Boolean = true,
     val accent: String = "cyan",
     val requirementsPolicy: String = "warn",
+    val webStatusEnabled: Boolean = false,
+    val webStatusPort: Int = 8090,
 )
 
 /** Metadata about the embedded Python runtime (Settings screen). */

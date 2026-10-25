@@ -218,6 +218,49 @@ fun BotDetailScreen(
                             )
                             Spacer(Modifier.height(8.dp))
                         }
+                        // v1.3: on-device pip install of the bot's declared deps
+                        if (state.status?.requirements?.isNotEmpty() == true) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { vm.installRequirements() },
+                                    enabled = !state.installing,
+                                ) {
+                                    Text(
+                                        text = if (state.installing) {
+                                            stringResource(R.string.bot_install_running)
+                                        } else {
+                                            stringResource(R.string.bot_install_button)
+                                        },
+                                    )
+                                }
+                            }
+                            state.installError?.let {
+                                Spacer(Modifier.height(6.dp))
+                                Text(it, color = NeonRed, style = MaterialTheme.typography.bodySmall)
+                            }
+                            state.install?.let { install ->
+                                Spacer(Modifier.height(6.dp))
+                                if (install.ok) {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.bot_install_ok,
+                                            install.installed.joinToString(", "),
+                                        ),
+                                        color = NeonMint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                } else {
+                                    install.errors.take(6).forEach { line ->
+                                        Text(
+                                            line,
+                                            color = NeonRed,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
                         val status = state.status
                         if (status != null && status.progressTotal != null) {
                             LinearProgressIndicator(

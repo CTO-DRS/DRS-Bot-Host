@@ -110,6 +110,20 @@
     <string name="notif_failed_title">Bot failed: %1$s</string>
     <string name="notif_failed_default">The bot exited with an error</string>
 
+    <string name="import_skills_title">Skill templates</string>
+    <string name="import_skills_note">One tap creates a working bot from a curated skill — edit it later as you like.</string>
+    <string name="import_skills_create">Create bot</string>
+    <string name="import_skills_requires">Requires packages: %1$s (install from the bot detail screen)</string>
+    <string name="settings_web_status">Wi-Fi status page</string>
+    <string name="settings_web_status_toggle">LAN fleet dashboard</string>
+    <string name="settings_web_status_summary">Serve a live status page of all bots on your local Wi-Fi (dark theme, JSON API included). Off by default.</string>
+    <string name="settings_web_status_port">Port</string>
+    <string name="settings_web_status_running">Serving on %1$s — open it from any device on the same network</string>
+    <string name="settings_web_status_starting">Starting the status server…</string>
+    <string name="bot_install_button">Install requirements</string>
+    <string name="bot_install_running">Installing…</string>
+    <string name="bot_install_ok">Installed into this bot\'s private site dir: %1$s</string>
+
     <string name="state_STOPPED">Stopped</string>
     <string name="state_STARTING">Starting</string>
     <string name="state_RUNNING">Running</string>

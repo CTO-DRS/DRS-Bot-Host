@@ -30,11 +30,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +71,7 @@ fun SettingsScreen() {
     }
     val settings by vm.settings.collectAsState()
     val runtime by vm.runtimeInfo.collectAsState()
+    val webStatus by vm.webStatus.collectAsState()
     val batteryExempt by vm.batteryExempt.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -106,6 +111,45 @@ fun SettingsScreen() {
                             onSelect = { vm.setAccent(key) },
                         )
                     }
+                }
+            }
+
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                SectionHeader(stringResource(R.string.settings_web_status))
+                SettingRow(
+                    title = stringResource(R.string.settings_web_status_toggle),
+                    subtitle = stringResource(R.string.settings_web_status_summary),
+                    checked = settings.webStatusEnabled,
+                    onChange = vm::setWebStatusEnabled,
+                )
+                if (settings.webStatusEnabled) {
+                    Spacer(Modifier.height(6.dp))
+                    var portText by remember(settings.webStatusPort) {
+                        mutableStateOf(settings.webStatusPort.toString())
+                    }
+                    OutlinedTextField(
+                        value = portText,
+                        onValueChange = { value ->
+                            portText = value
+                            value.toIntOrNull()?.let(vm::setWebStatusPort)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.settings_web_status_port)) },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    val web = webStatus
+                    Text(
+                        text = if (web.running) {
+                            stringResource(
+                                R.string.settings_web_status_running,
+                                "http://<phone-ip>:${web.port}",
+                            )
+                        } else {
+                            stringResource(R.string.settings_web_status_starting)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
 
