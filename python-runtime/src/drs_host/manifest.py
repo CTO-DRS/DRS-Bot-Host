@@ -34,7 +34,9 @@ ALLOWED_KEYS = {
     "restart",
     "auto_start",
     "schedule",
+    "isolation",
 }
+ISOLATION_MODES = ("thread", "process")
 SCHEDULE_KINDS = ("interval", "daily")
 SCHEDULE_KEYS = {"kind", "interval_seconds", "run_seconds", "time", "duration_seconds", "enabled"}
 MAX_SCHEDULE_SECONDS = 366 * 24 * 3600
@@ -66,6 +68,7 @@ class BotManifest:
     restart: dict = field(default_factory=lambda: dict(RESTART_DEFAULTS))
     auto_start: bool = False
     schedule: Optional[dict] = None
+    isolation: str = "thread"
     spec_version: int = SPEC_VERSION
 
     def to_dict(self) -> dict:
@@ -263,6 +266,13 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
     restart = _validate_restart(data.get("restart"), errors)
     schedule = _validate_schedule(data.get("schedule"), errors)
 
+    isolation = data.get("isolation", "thread")
+    if isolation not in ISOLATION_MODES:
+        errors.append(
+            "isolation: must be one of " + ", ".join(ISOLATION_MODES)
+        )
+        isolation = "thread"
+
     if errors:
         return None, errors
 
@@ -280,6 +290,7 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
         restart=restart,
         auto_start=auto_start,
         schedule=schedule,
+        isolation=isolation,
         spec_version=spec_version,
     )
     return manifest, []

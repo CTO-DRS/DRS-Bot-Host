@@ -27,6 +27,8 @@ import zipfile
 from pathlib import Path
 
 from . import importer
+from . import installer
+from . import isolation as isolation_mod
 from .logging import BotLogger, JsonlFileSink, RingBuffer
 from .manifest import BotManifest, validate_manifest, python_version_tuple
 from .runner import BotRunner
@@ -48,6 +50,7 @@ class SupervisedBot:
         self.bot_dir = Path(bot_dir)
         self.state = BotState.STOPPED
         self.thread: BotRunner | None = None
+        self.isolation_effective = "thread"
         self.stop_event = threading.Event()
         self.ctx = BotContext(
             manifest.id, manifest.name, manifest.config, self.stop_event, None
@@ -92,6 +95,8 @@ class SupervisedBot:
                 else None
             ),
             "detached": self.detached,
+            "isolation": self.manifest.isolation,
+            "isolation_effective": self.isolation_effective,
             "schedule": self.manifest.schedule,
             "schedule_state": {
                 "next_start_at": self.schedule_state.get("next_start_at"),
@@ -473,19 +478,44 @@ class Supervisor:
         bot.stopped_at = None
         bot.last_error = None
         bot.run_count += 1
-        runner = BotRunner(
-            bot.ctx,
-            bot.bot_dir,
-            bot.manifest.entrypoint,
-            self.stream_hub,
-            on_exit=lambda thread, state, error, cpu_used=None, b=bot: self._on_exit(
-                b, thread, state, error, cpu_used=cpu_used
-            ),
-        )
+        site_dir = installer.site_dir_for_run(bot.bot_dir, self.bots_root.parent, bot.manifest.id)
+        runner = self._build_runner(bot, site_dir)
         bot.thread = runner
         runner.start()
         if bot.state == BotState.STARTING and runner.is_alive():
             bot.state = BotState.RUNNING
+
+    def _build_runner(self, bot: SupervisedBot, site_dir):
+        """Pick the runner class: real process isolation when available."""
+        on_exit = lambda thread, state, error, cpu_used=None, b=bot: self._on_exit(  # noqa: E731
+            b, thread, state, error, cpu_used=cpu_used
+        )
+        if bot.manifest.isolation == "process":
+            if isolation_mod.process_runtime_available():
+                bot.isolation_effective = "process"
+                return isolation_mod.ProcessRunner(
+                    bot.ctx,
+                    bot.bot_dir,
+                    bot.manifest.entrypoint,
+                    on_exit,
+                    env=isolation_mod.build_child_env(site_dir=site_dir),
+                )
+            bot.isolation_effective = "thread"
+            bot.logger.warning(
+                "isolation=process requested but no standalone python runtime is "
+                "available here — falling back to thread mode (force-stop stays "
+                "cooperative)"
+            )
+        else:
+            bot.isolation_effective = "thread"
+        return BotRunner(
+            bot.ctx,
+            bot.bot_dir,
+            bot.manifest.entrypoint,
+            self.stream_hub,
+            on_exit=on_exit,
+            site_dir=site_dir,
+        )
 
     def stop(self, bot_id, timeout: float = 8.0) -> dict:
         with self._lock:
@@ -519,13 +549,14 @@ class Supervisor:
         return {"ok": True, "id": bot_id, "state": bot.state}
 
     def force_stop(self, bot_id, grace: float = 2.0) -> dict:
-        """Escalated stop for unresponsive bots (v1.2).
+        """Escalated stop for unresponsive bots (v1.2; real kill in v1.3).
 
-        Python threads cannot be killed in-process, so a thread that ignores
-        the stop event is *detached*: the bot is marked ``FORCE_STOPPED`` and
-        the zombie thread is no longer tracked (its eventual exit callback is
-        ignored). On Android the OS remains the real hard-kill path for the
-        whole host process.
+        Thread mode: Python threads cannot be killed in-process, so a thread
+        that ignores the stop event is *detached*: the bot is marked
+        ``FORCE_STOPPED`` and the zombie thread is no longer tracked.
+
+        Process mode (``isolation: "process"`` + a desktop-class runtime):
+        the child *process* is ``SIGKILL``ed — no zombie survives.
         """
         with self._lock:
             bot = self._bots.get(bot_id)
@@ -537,6 +568,23 @@ class Supervisor:
             bot.stop_event.set()
             bot.state = BotState.STOPPING
             thread = bot.thread
+            runner_is_process = isinstance(thread, isolation_mod.ProcessRunner)
+        if runner_is_process and thread is not None:
+            thread.kill()  # a real kill — the child cannot ignore SIGKILL
+            thread.join(grace)
+            with self._lock:
+                if bot.state == BotState.STOPPING:
+                    bot.state = BotState.STOPPED
+                    bot.stopped_at = time.time()
+                    bot.restarts = 0
+                    bot.logger.warning("force-stopped: child process was SIGKILLed")
+                    return {
+                        "ok": True,
+                        "id": bot_id,
+                        "state": BotState.STOPPED,
+                        "note": "process killed (isolation=process)",
+                    }
+                return {"ok": True, "id": bot_id, "state": bot.state}
         if thread is not None and thread.is_alive():
             thread.join(grace)
         with self._lock:
@@ -585,6 +633,7 @@ class Supervisor:
                 }
             del self._bots[bot_id]
         shutil.rmtree(self.bots_root / bot_id, ignore_errors=True)
+        installer.uninstall_site_dir(self.bots_root.parent, bot_id)
         return {"ok": True, "id": bot_id}
 
     def shutdown_all(self) -> dict:

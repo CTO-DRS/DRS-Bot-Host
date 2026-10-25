@@ -88,6 +88,27 @@ def main(argv=None) -> int:
     )
     cmd_policy.add_argument("value", nargs="?", choices=host_api.REQUIREMENTS_POLICIES)
 
+    sub.add_parser("skills", help="list the available skill templates")
+
+    cmd_skill = sub.add_parser(
+        "scaffold-skill", help="generate a ready-to-import bot from a skill template"
+    )
+    cmd_skill.add_argument("skill")
+    cmd_skill.add_argument("name")
+    cmd_skill.add_argument("--dest", default=".")
+
+    cmd_install = sub.add_parser(
+        "install-reqs", help="pip-install a bot's requirements into its site dir"
+    )
+    cmd_install.add_argument("bot_id")
+    cmd_install.add_argument("--timeout", type=float, default=600.0)
+
+    cmd_serve = sub.add_parser(
+        "serve-status", help="serve the Wi-Fi fleet status page until Ctrl+C"
+    )
+    cmd_serve.add_argument("--port", type=int, default=8090)
+    cmd_serve.add_argument("--token", default=None)
+
     args = parser.parse_args(argv)
     host_api.configure(args.data_dir)
 
@@ -145,6 +166,33 @@ def main(argv=None) -> int:
         result = host_api.set_bot_config(args.bot_id, args.json)
         _print_json(result)
         return 0 if result.get("ok") else 2
+
+    if args.command == "skills":
+        _print_json(host_api.list_skills())
+        return 0
+
+    if args.command == "scaffold-skill":
+        result = host_api.scaffold_skill(args.skill, args.name, args.dest)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "install-reqs":
+        result = host_api.install_bot_requirements(args.bot_id, args.timeout)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "serve-status":
+        started = host_api.web_status_start(args.port, args.token)
+        _print_json(started)
+        if not started.get("ok"):
+            return 2
+        try:
+            while True:
+                time.sleep(1.0)
+        except KeyboardInterrupt:
+            host_api.web_status_stop()
+            print("status server stopped")
+        return 0
 
     if args.command == "run":
         return _run(args)

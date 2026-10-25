@@ -14,7 +14,8 @@ import threading
 import time
 from pathlib import Path
 
-from . import __version__, scaffold
+from . import __version__, scaffold, skills
+from .installer import pip_runtime_available
 from .streams import ThreadAwareStream
 from .supervisor import REQUIREMENTS_POLICIES, Supervisor
 
@@ -22,6 +23,7 @@ _supervisor: Supervisor | None = None
 _data_dir: str | None = None
 _available_packages: set | None = None
 _hub: ThreadAwareStream | None = None
+_web_server = None
 _lock = threading.Lock()
 _STARTED_AT = time.time()
 
@@ -264,11 +266,115 @@ def set_bot_config(bot_id, config) -> dict:
 
 
 def scaffold_bot(name, dest) -> dict:
-    """Generate a ready-to-import sample bot folder."""
+    """Generate a ready-to-import sample bot folder (echo skill)."""
     return scaffold.scaffold_bot(str(name), dest)
 
 
+# --------------------------------------------------------------------- #
+# Skills (v1.3)                                                          #
+# --------------------------------------------------------------------- #
+
+
+def list_skills() -> list:
+    """Catalogue of one-tap skill templates (key/title/description/config)."""
+    return skills.list_skills()
+
+
+def scaffold_skill(skill, name, dest) -> dict:
+    """Materialise a skill template as an importable bot folder."""
+    return skills.scaffold_skill(str(skill), str(name), dest)
+
+
+# --------------------------------------------------------------------- #
+# On-device requirements installer (v1.3)                                #
+# --------------------------------------------------------------------- #
+
+
+def pip_available() -> bool:
+    """Whether the embedded runtime ships pip (installer usable)."""
+    return pip_runtime_available()
+
+
+def install_bot_requirements(bot_id, timeout: float = None) -> dict:
+    """pip-install the bot's declared requirements into its own site dir.
+
+    Sources: ``bot.json`` requirements + ``requirements.txt``. The site dir
+    is prepended to ``sys.path`` automatically for every subsequent run of
+    this bot. Returns a structured result with a bounded output tail.
+    """
+    from .installer import INSTALL_TIMEOUT_SECONDS, install_requirements
+
+    supervisor = _ensure()
+    bot = supervisor.get(bot_id)
+    if bot is None:
+        return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+    # Installing while a run is active is allowed; the site dir is picked up
+    # on the bot's next start (the runner resolves it at launch time).
+    return install_requirements(
+        str(bot_id),
+        bot.bot_dir,
+        _data_dir,
+        bot.manifest.requirements,
+        timeout=float(timeout) if timeout else INSTALL_TIMEOUT_SECONDS,
+    )
+
+
+# --------------------------------------------------------------------- #
+# Wi-Fi fleet status page (v1.3)                                         #
+# --------------------------------------------------------------------- #
+
+
+def web_status_start(port=None, token=None) -> dict:
+    """Start the LAN status dashboard (opt-in)."""
+    global _web_server
+    from .webstatus import DEFAULT_PORT, FleetStatusServer, _FleetSnapshot
+
+    supervisor = _ensure()
+    with _lock:
+        if _web_server is not None and _web_server.running():
+            return {"ok": True, "port": _web_server.actual_port(), "already": True}
+        try:
+            resolved_port = int(port) if port is not None else DEFAULT_PORT
+        except (TypeError, ValueError):
+            return {"ok": False, "errors": ["port must be an integer"]}
+        if not 0 <= resolved_port <= 65535:
+            return {"ok": False, "errors": ["port must be 0-65535"]}
+        snapshot = _FleetSnapshot(supervisor, __version__, sys.version.split()[0])
+        server = FleetStatusServer(
+            snapshot, host="0.0.0.0", port=resolved_port, token=token
+        )
+        result = server.start()
+        if result.get("ok"):
+            _web_server = server
+        return result
+
+
+def web_status_stop() -> dict:
+    global _web_server
+    with _lock:
+        server = _web_server
+        _web_server = None
+    if server is None:
+        return {"ok": True, "stopped": False}
+    return server.stop()
+
+
+def web_status_info() -> dict:
+    with _lock:
+        server = _web_server
+        if server is None or not server.running():
+            return {"ok": True, "running": False, "port": 0}
+        return {
+            "ok": True,
+            "running": True,
+            "host": server.host,
+            "port": server.actual_port(),
+            "protected": server.token is not None,
+        }
+
+
 def shutdown_all() -> dict:
+    web_status_stop()
     if _supervisor is None:
         return {"ok": True, "stopped": []}
     return _supervisor.shutdown_all()

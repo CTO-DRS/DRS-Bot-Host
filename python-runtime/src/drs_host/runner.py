@@ -4,6 +4,12 @@ The runner:
 
 - injects the :class:`drs_host.sdk.BotContext` into the thread (contextvar)
 - registers a stdout adapter so ``print()`` becomes per-bot INFO logs
+- optionally prepends a bot-specific pip ``site`` directory to ``sys.path``
+  for the duration of the run (v1.3 on-device installs); the entry is
+  removed again when the run ends. NOTE: ``sys.path`` is process-global, so
+  two bots running concurrently see each other's entries — package name
+  collisions between separately-installed versions remain possible and are
+  documented rather than hidden.
 - executes the entrypoint through ``runpy`` with ``__name__ == "__main__"``
   (both guard-based and top-level bot scripts work)
 - measures the CPU time consumed by the bot thread per run via
@@ -14,7 +20,8 @@ The runner:
 
 Python threads cannot be force-killed; termination is cooperative through
 ``ctx.stop_event`` / ``ctx.sleep_or_stop()``. The supervisor can detach an
-unresponsive thread with ``force_stop()`` (see supervisor.py).
+unresponsive thread with ``force_stop()`` (see supervisor.py). For a real
+kill see ``isolation.py`` (process mode, v1.3).
 """
 
 from __future__ import annotations
@@ -63,12 +70,13 @@ class _StreamAdapter:
 class BotRunner(threading.Thread):
     """Executes a single bot run and reports the outcome."""
 
-    def __init__(self, ctx, bot_dir, entrypoint, stream_hub, on_exit):
+    def __init__(self, ctx, bot_dir, entrypoint, stream_hub, on_exit, site_dir=None):
         super().__init__(name=f"drs-bot-{ctx.bot_id}", daemon=True)
         self.ctx = ctx
         self.bot_dir = Path(bot_dir)
         self.entrypoint = entrypoint
         self.stream_hub = stream_hub
+        self.site_dir = str(site_dir) if site_dir else None
         self._on_exit = on_exit
 
     def run(self) -> None:
@@ -78,7 +86,14 @@ class BotRunner(threading.Thread):
         token = set_context(self.ctx)
         adapter = None
         swapped = False
+        path_inserted = False
         try:
+            if self.site_dir:
+                # Bot-local packages (v1.3 installer). Inserted for the
+                # duration of the run only.
+                if self.site_dir not in sys.path:
+                    sys.path.insert(0, self.site_dir)
+                    path_inserted = True
             if self.stream_hub is not None:
                 adapter = _StreamAdapter(self.ctx.logger)
                 self.stream_hub.register(adapter)
@@ -104,6 +119,11 @@ class BotRunner(threading.Thread):
             error = "".join(traceback.format_exception(exc)).strip()
             self.ctx.logger.error(f"bot crashed: {error}")
         finally:
+            if path_inserted:
+                try:
+                    sys.path.remove(self.site_dir)
+                except ValueError:  # pragma: no cover - someone else cleaned it
+                    pass
             if swapped and sys.stdout is self.stream_hub:
                 sys.stdout = self._original_stdout
             if self.stream_hub is not None:
