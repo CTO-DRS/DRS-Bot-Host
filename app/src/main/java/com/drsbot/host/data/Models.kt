@@ -33,6 +33,7 @@ data class BotStatus(
     val scheduleNextStartAt: Double? = null,
     val isolation: String = "thread",
     val isolationEffective: String = "thread",
+    val requirements: List<String> = emptyList(),
     val configJson: String = "{}",
 ) {
     /** Mirrors BotState.TERMINAL on the Python side. */
@@ -91,6 +92,7 @@ data class BotStatus(
                 configJson = o.optJSONObject("config")?.toString() ?: "{}",
                 isolation = o.optString("isolation", "thread"),
                 isolationEffective = o.optString("isolation_effective", "thread"),
+                requirements = o.optJSONArray("requirements").toStringList(),
             )
         }
     }

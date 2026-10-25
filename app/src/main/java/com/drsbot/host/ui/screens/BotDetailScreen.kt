@@ -44,6 +44,7 @@ import com.drsbot.host.ui.components.GlowBackground
 import com.drsbot.host.ui.components.SectionHeader
 import com.drsbot.host.ui.components.StatusChip
 import com.drsbot.host.ui.theme.DrsThemeTokens
+import com.drsbot.host.ui.theme.NeonMint
 import com.drsbot.host.ui.theme.NeonRed
 import com.drsbot.host.util.Formatters
 import com.drsbot.host.vm.BotDetailViewModel
