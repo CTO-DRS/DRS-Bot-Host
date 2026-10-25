@@ -9,6 +9,6 @@ the host. The same package runs in three places:
 - inside the pytest suite that verifies the core logic
 """
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 
 __all__ = ["__version__"]

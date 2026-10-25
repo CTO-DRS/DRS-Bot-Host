@@ -17,6 +17,7 @@ SPEC_VERSION = 1
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{1,63}$")
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 _PYVER_RE = re.compile(r"^3\.\d{1,2}$")
+_HHMM_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 ALLOWED_KEYS = {
     "spec_version",
@@ -32,7 +33,11 @@ ALLOWED_KEYS = {
     "config",
     "restart",
     "auto_start",
+    "schedule",
 }
+SCHEDULE_KINDS = ("interval", "daily")
+SCHEDULE_KEYS = {"kind", "interval_seconds", "run_seconds", "time", "duration_seconds", "enabled"}
+MAX_SCHEDULE_SECONDS = 366 * 24 * 3600
 RESTART_POLICIES = ("never", "on_failure", "always")
 RESTART_DEFAULTS = {
     "policy": "on_failure",
@@ -60,6 +65,7 @@ class BotManifest:
     config: dict = field(default_factory=dict)
     restart: dict = field(default_factory=lambda: dict(RESTART_DEFAULTS))
     auto_start: bool = False
+    schedule: Optional[dict] = None
     spec_version: int = SPEC_VERSION
 
     def to_dict(self) -> dict:
@@ -107,6 +113,74 @@ def _validate_restart(raw: Any, errors: list) -> dict:
             errors.append(f"restart.{key}: must be a number between {lo} and {hi}")
         else:
             out[key] = float(value)
+    return out
+
+
+def _validate_schedule(raw: Any, errors: list) -> Optional[dict]:
+    """Validate the optional ``schedule`` object (v1.2).
+
+    Two kinds:
+
+    - ``interval``: run every ``interval_seconds`` for ``run_seconds``
+      (omit ``run_seconds`` to keep the bot running until the next cycle
+      or a manual stop).
+    - ``daily``: run every day starting at ``time`` (``HH:MM``, local
+      device time) for ``duration_seconds``.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        errors.append("schedule: must be an object")
+        return None
+    unknown = set(raw) - SCHEDULE_KEYS
+    if unknown:
+        errors.append("schedule: unknown key(s): " + ", ".join(sorted(unknown)))
+
+    out: dict = {"enabled": raw.get("enabled", True)}
+    if not isinstance(out["enabled"], bool):
+        errors.append("schedule.enabled: must be true or false")
+        out["enabled"] = True
+
+    kind = raw.get("kind")
+    if kind not in SCHEDULE_KINDS:
+        errors.append(
+            "schedule.kind: must be one of " + ", ".join(SCHEDULE_KINDS)
+        )
+        return None
+    out["kind"] = kind
+
+    def _seconds(key: str, lo: float, hi: float, required: bool = False):
+        value = raw.get(key)
+        if value is None:
+            if required:
+                errors.append(f"schedule.{key}: required for kind '{kind}'")
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(f"schedule.{key}: must be a number of seconds")
+            return None
+        if not lo <= float(value) <= hi:
+            errors.append(
+                f"schedule.{key}: must be between {lo:g} and {hi:g} seconds"
+            )
+            return None
+        return float(value)
+
+    if kind == "interval":
+        interval = _seconds("interval_seconds", 1.0, MAX_SCHEDULE_SECONDS, required=True)
+        if interval is not None:
+            out["interval_seconds"] = interval
+        run_for = _seconds("run_seconds", 1.0, MAX_SCHEDULE_SECONDS)
+        if run_for is not None:
+            out["run_seconds"] = run_for
+    else:  # daily
+        clock = raw.get("time")
+        if not isinstance(clock, str) or not _HHMM_RE.match(clock):
+            errors.append("schedule.time: required for kind 'daily', format 'HH:MM'")
+        else:
+            out["time"] = clock
+        duration = _seconds("duration_seconds", 60.0, MAX_SCHEDULE_SECONDS)
+        if duration is not None:
+            out["duration_seconds"] = duration
     return out
 
 
@@ -187,6 +261,7 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
         auto_start = False
 
     restart = _validate_restart(data.get("restart"), errors)
+    schedule = _validate_schedule(data.get("schedule"), errors)
 
     if errors:
         return None, errors
@@ -204,6 +279,7 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
         config=config,
         restart=restart,
         auto_start=auto_start,
+        schedule=schedule,
         spec_version=spec_version,
     )
     return manifest, []

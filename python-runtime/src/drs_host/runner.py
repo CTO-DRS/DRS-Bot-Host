@@ -6,12 +6,15 @@ The runner:
 - registers a stdout adapter so ``print()`` becomes per-bot INFO logs
 - executes the entrypoint through ``runpy`` with ``__name__ == "__main__"``
   (both guard-based and top-level bot scripts work)
+- measures the CPU time consumed by the bot thread per run via
+  ``resource.getrusage(RUSAGE_THREAD)`` (Linux/Android) — reported as
+  ``cpu_used`` when available, ``None`` elsewhere
 - classifies the outcome: ``COMPLETED``, ``STOPPED`` or ``FAILED`` with a
   full traceback, and reports it to the supervisor via ``on_exit``.
 
 Python threads cannot be force-killed; termination is cooperative through
-``ctx.stop_event`` / ``ctx.sleep_or_stop()``. This is a documented v1.0
-contract (see docs/BOT_SPEC.md).
+``ctx.stop_event`` / ``ctx.sleep_or_stop()``. The supervisor can detach an
+unresponsive thread with ``force_stop()`` (see supervisor.py).
 """
 
 from __future__ import annotations
@@ -23,6 +26,17 @@ import traceback
 from pathlib import Path
 
 from .sdk import StopRequested, set_context, reset_context
+
+
+def thread_cpu_seconds():
+    """Cumulative CPU seconds of the *calling* thread, or None if unavailable."""
+    try:
+        import resource
+
+        usage = resource.getrusage(resource.RUSAGE_THREAD)
+        return usage.ru_utime + usage.ru_stime
+    except Exception:  # noqa: BLE001 - non-Linux platforms simply get no metric
+        return None
 
 
 class _StreamAdapter:
@@ -60,6 +74,7 @@ class BotRunner(threading.Thread):
     def run(self) -> None:
         state = "COMPLETED"
         error = None
+        cpu_start = thread_cpu_seconds()
         token = set_context(self.ctx)
         adapter = None
         swapped = False
@@ -94,7 +109,12 @@ class BotRunner(threading.Thread):
             if self.stream_hub is not None:
                 self.stream_hub.unregister()
             reset_context(token)
+            cpu_used = None
+            if cpu_start is not None:
+                cpu_end = thread_cpu_seconds()
+                if cpu_end is not None:
+                    cpu_used = max(0.0, cpu_end - cpu_start)
             try:
-                self._on_exit(state, error)
+                self._on_exit(self, state, error, cpu_used=cpu_used)
             except Exception:  # noqa: BLE001 - supervisor callbacks must not hang
                 pass

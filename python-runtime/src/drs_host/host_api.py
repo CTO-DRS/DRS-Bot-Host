@@ -7,6 +7,7 @@ deep PyObject conversion.
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import sys
 import threading
@@ -15,7 +16,7 @@ from pathlib import Path
 
 from . import __version__, scaffold
 from .streams import ThreadAwareStream
-from .supervisor import Supervisor
+from .supervisor import REQUIREMENTS_POLICIES, Supervisor
 
 _supervisor: Supervisor | None = None
 _data_dir: str | None = None
@@ -26,15 +27,23 @@ _STARTED_AT = time.time()
 
 
 def configure(data_dir, *, limits=None) -> dict:
-    """Initialize storage + supervisor and discover installed bots."""
+    """Initialize storage + supervisor + scheduler and discover installed bots."""
     global _supervisor, _data_dir, _hub
     base = Path(data_dir)
     (base / "bots").mkdir(parents=True, exist_ok=True)
     _install_stream_hub()
     with _lock:
+        if _supervisor is not None:
+            _supervisor.shutdown_all()  # stops the previous scheduler thread
         _data_dir = str(base)
-        _supervisor = Supervisor(base / "bots", limits=limits, stream_hub=_hub)
+        _supervisor = Supervisor(
+            base / "bots",
+            limits=limits,
+            stream_hub=_hub,
+            requirements_checker=_missing_requirements,
+        )
         discovered = _supervisor.discover_installed()
+        _supervisor.start_scheduler()
     return {"ok": True, "data_dir": _data_dir, "discovered": discovered}
 
 
@@ -83,20 +92,73 @@ def _package_name(requirement: str) -> str:
     return re.split(r"[<>=!~;\[\s]", requirement.strip(), maxsplit=1)[0].lower()
 
 
+def _importable_module(name: str) -> bool:
+    """Best-effort importability probe for a PyPI-style package name."""
+    if not name:
+        return False
+    lowered = name.lower()
+    candidates = [name, lowered, name.replace("-", "_"), lowered.replace("-", "_")]
+    for candidate in dict.fromkeys(candidates):
+        try:
+            if importlib.util.find_spec(candidate) is not None:
+                return True
+        except (ImportError, ValueError, AttributeError):
+            continue
+    return False
+
+
+def _missing_requirements(manifest) -> list:
+    """Requirements that are neither baked in nor importable right now."""
+    missing = []
+    for requirement in manifest.requirements:
+        name = _package_name(requirement)
+        baked = _available_packages is not None and name in _available_packages
+        if not baked and not _importable_module(name):
+            missing.append(requirement)
+    return missing
+
+
 def check_requirements(bot_id) -> dict:
-    """Compare a bot's declared requirements against the built-in set."""
+    """Report which of a bot's declared requirements look unavailable.
+
+    Two sources are consulted: the build-time package set declared via
+    ``set_available_packages`` and a best-effort ``find_spec`` probe of the
+    live interpreter (handles common name/module mismatches like
+    ``Pillow`` -> ``PIL`` only when names coincide; genuinely different
+    module names are reported as best-effort results).
+    """
     supervisor = _ensure()
     bot = supervisor.get(bot_id)
     if bot is None:
         return {"ok": False, "errors": [f"unknown bot id: {bot_id}"], "known": False, "missing": []}
-    if _available_packages is None:
-        return {"ok": True, "known": False, "missing": []}
-    missing = [
-        requirement
-        for requirement in bot.manifest.requirements
-        if _package_name(requirement) not in _available_packages
-    ]
-    return {"ok": True, "known": True, "missing": missing}
+    return {
+        "ok": True,
+        "known": _available_packages is not None,
+        "missing": _missing_requirements(bot.manifest),
+    }
+
+
+def requirements_policy() -> str:
+    """Current start-time requirements policy: off | warn | enforce."""
+    return _ensure().requirements_policy
+
+
+def set_requirements_policy(policy) -> dict:
+    """Control what start() does with missing requirements.
+
+    ``off`` never checks; ``warn`` starts the bot but logs a warning;
+    ``enforce`` refuses to start with a clear error.
+    """
+    supervisor = _ensure()
+    if policy not in REQUIREMENTS_POLICIES:
+        return {
+            "ok": False,
+            "errors": [
+                "policy must be one of " + ", ".join(REQUIREMENTS_POLICIES)
+            ],
+        }
+    supervisor.requirements_policy = policy
+    return {"ok": True, "policy": policy}
 
 
 # --------------------------------------------------------------------- #
@@ -110,6 +172,13 @@ def import_zip(zip_path, overwrite: bool = False) -> dict:
 
 def import_folder(folder, overwrite: bool = False) -> dict:
     return _ensure().import_folder(folder, overwrite=overwrite)
+
+
+def import_bot_url(url, overwrite: bool = False) -> dict:
+    """Download a bot zip over HTTP(S) and import it (GitHub links supported)."""
+    from . import downloader
+
+    return downloader.import_url(url, _ensure(), overwrite=overwrite)
 
 
 def remove_bot(bot_id) -> dict:
@@ -136,8 +205,18 @@ def stop_bot(bot_id) -> dict:
     return _ensure().stop(bot_id)
 
 
+def force_stop_bot(bot_id, grace: float = 2.0) -> dict:
+    """Escalated stop: detach an unresponsive bot thread (FORCE_STOPPED)."""
+    return _ensure().force_stop(bot_id, grace)
+
+
 def restart_bot(bot_id) -> dict:
     return _ensure().restart(bot_id)
+
+
+def set_schedule_enabled(bot_id, enabled) -> dict:
+    """Enable/disable a bot's cron-like schedule (persists to bot.json)."""
+    return _ensure().set_schedule_enabled(bot_id, enabled)
 
 
 def start_autostart_bots() -> dict:
@@ -149,10 +228,26 @@ def recent_logs(bot_id, limit: int = 500) -> list:
 
 
 def host_stats() -> dict:
-    """Fleet-wide dashboard statistics + host uptime."""
+    """Fleet-wide dashboard statistics + host uptime + process footprint."""
     stats = _ensure().host_stats()
     stats["uptime_seconds"] = round(time.time() - _STARTED_AT, 3)
+    stats["process_rss_bytes"] = process_rss_bytes()
     return stats
+
+
+def process_rss_bytes() -> int:
+    """Resident memory of the host process (0 when unavailable)."""
+    try:
+        if sys.platform.startswith("linux"):
+            with open("/proc/self/status", "r", encoding="utf-8") as handle:
+                for line in handle:
+                    if line.startswith("VmRSS:"):
+                        return int(line.split()[1]) * 1024
+        import resource
+
+        return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) * 1024
+    except Exception:  # noqa: BLE001 - telemetry must never raise
+        return 0
 
 
 def export_logs(bot_id) -> dict:

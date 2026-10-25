@@ -5,6 +5,7 @@ Examples::
     python -m drs_host.cli info
     python -m drs_host.cli list --data-dir ./data
     python -m drs_host.cli import sample-bots/echo-bot
+    python -m drs_host.cli import-url https://github.com/owner/repo
     python -m drs_host.cli run sample-bots/echo-bot --seconds 4
 """
 
@@ -53,6 +54,12 @@ def main(argv=None) -> int:
     cmd_stop = sub.add_parser("stop", help="stop a running bot")
     cmd_stop.add_argument("bot_id")
 
+    cmd_force = sub.add_parser(
+        "force-stop", help="detach an unresponsive bot (FORCE_STOPPED)"
+    )
+    cmd_force.add_argument("bot_id")
+    cmd_force.add_argument("--grace", type=float, default=2.0)
+
     sub.add_parser("stats", help="aggregate host statistics")
 
     cmd_scaffold = sub.add_parser(
@@ -69,6 +76,17 @@ def main(argv=None) -> int:
     )
     cmd_config.add_argument("bot_id")
     cmd_config.add_argument("json")
+
+    cmd_url = sub.add_parser(
+        "import-url", help="download a bot zip over HTTP(S) and import it"
+    )
+    cmd_url.add_argument("url")
+    cmd_url.add_argument("--overwrite", action="store_true")
+
+    cmd_policy = sub.add_parser(
+        "requirements-policy", help="show/set the requirements policy (off/warn/enforce)"
+    )
+    cmd_policy.add_argument("value", nargs="?", choices=host_api.REQUIREMENTS_POLICIES)
 
     args = parser.parse_args(argv)
     host_api.configure(args.data_dir)
@@ -90,6 +108,24 @@ def main(argv=None) -> int:
         result = host_api.stop_bot(args.bot_id)
         _print_json(result)
         return 0 if result.get("ok") else 2
+
+    if args.command == "force-stop":
+        result = host_api.force_stop_bot(args.bot_id, args.grace)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "import-url":
+        result = host_api.import_bot_url(args.url, overwrite=args.overwrite)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "requirements-policy":
+        if args.value:
+            result = host_api.set_requirements_policy(args.value)
+            _print_json(result)
+            return 0 if result.get("ok") else 2
+        _print_json({"ok": True, "policy": host_api.requirements_policy()})
+        return 0
 
     if args.command == "stats":
         _print_json(host_api.host_stats())

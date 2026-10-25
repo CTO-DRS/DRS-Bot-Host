@@ -8,8 +8,12 @@ State machine per bot::
     FAILED ──policy allows──> BACKOFF ──timer──> STARTING (restarts += 1)
 
 Termination is cooperative (threads cannot be force-killed in Python).
-A bot that ignores ``stop_event`` stays in ``STOPPING`` with an explicit
-warning in its status — an honest, documented v1.0 limitation.
+A bot that ignores ``stop_event`` stays in ``STOPPING``; the explicit
+``force_stop()`` escalation (v1.2) detaches such a thread and marks the bot
+``FORCE_STOPPED`` — the zombie thread keeps running until the host process
+exits (on Android the OS can still kill the whole service), but it can no
+longer influence the bot's state. Exit callbacks are matched against the
+currently tracked runner, so detached runs never corrupt live state.
 """
 
 from __future__ import annotations
@@ -26,21 +30,14 @@ from . import importer
 from .logging import BotLogger, JsonlFileSink, RingBuffer
 from .manifest import BotManifest, validate_manifest, python_version_tuple
 from .runner import BotRunner
+from .scheduler import BotScheduler
 from .sdk import BotContext
+from .states import BotState  # re-exported for backwards compatibility
+
+__all__ = ["BotState", "Supervisor", "SupervisedBot", "REQUIREMENTS_POLICIES"]
 
 CONFIG_MAX_BYTES = 64 * 1024
-
-
-class BotState:
-    STOPPED = "STOPPED"
-    STARTING = "STARTING"
-    RUNNING = "RUNNING"
-    STOPPING = "STOPPING"
-    BACKOFF = "BACKOFF"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
-
-    TERMINAL = {STOPPED, COMPLETED, FAILED}
+REQUIREMENTS_POLICIES = ("off", "warn", "enforce")
 
 
 class SupervisedBot:
@@ -61,6 +58,10 @@ class SupervisedBot:
         self.started_at = None
         self.stopped_at = None
         self.stop_requested = False
+        self.detached = False
+        self.cpu_seconds = 0.0
+        self.last_cpu_seconds = None
+        self.schedule_state = {"last_start": None, "next_start_at": None}
         self.ring = RingBuffer()
         self.file_sink = JsonlFileSink(self.bot_dir / "logs" / "runtime.jsonl")
         self.logger = BotLogger(manifest.id, [self.ring, self.file_sink])
@@ -84,6 +85,17 @@ class SupervisedBot:
             "restarts": self.restarts,
             "run_count": self.run_count,
             "uptime_seconds": self._uptime_seconds(),
+            "cpu_seconds": round(self.cpu_seconds, 3),
+            "last_cpu_seconds": (
+                round(self.last_cpu_seconds, 3)
+                if self.last_cpu_seconds is not None
+                else None
+            ),
+            "detached": self.detached,
+            "schedule": self.manifest.schedule,
+            "schedule_state": {
+                "next_start_at": self.schedule_state.get("next_start_at"),
+            },
             "last_error": self.last_error,
             "started_at": self.started_at,
             "stopped_at": self.stopped_at,
@@ -104,13 +116,76 @@ class SupervisedBot:
 class Supervisor:
     """Owns installed bots, their threads, logs and restart behaviour."""
 
-    def __init__(self, bots_root, *, limits=None, sleeper=time.sleep, stream_hub=None):
+    def __init__(self, bots_root, *, limits=None, sleeper=time.sleep, stream_hub=None,
+                 requirements_checker=None):
         self.bots_root = Path(bots_root)
         self._limits = limits
         self._sleeper = sleeper
         self._lock = threading.RLock()
         self._bots: dict[str, SupervisedBot] = {}
         self.stream_hub = stream_hub
+        self._requirements_checker = requirements_checker
+        self.requirements_policy = "warn"
+        self._scheduler = BotScheduler(self)
+
+    # -- introspection used by the scheduler ---------------------------
+
+    @property
+    def lock(self) -> threading.RLock:
+        return self._lock
+
+    @property
+    def bots(self) -> dict:
+        return self._bots
+
+    def limits_overlay(self) -> dict:
+        """Effective importer limits (defaults merged with custom overrides)."""
+        overlay = dict(importer.DEFAULT_LIMITS)
+        if self._limits:
+            overlay.update(self._limits)
+        return overlay
+
+    # ------------------------------------------------------------------ #
+    # Scheduler                                                          #
+    # ------------------------------------------------------------------ #
+
+    def start_scheduler(self) -> dict:
+        """Start the cron-like scheduler thread (interval/daily windows)."""
+        self._scheduler.start()
+        return {"ok": True}
+
+    def scheduler_running(self) -> bool:
+        thread = self._scheduler._thread
+        return thread is not None and thread.is_alive()
+
+    def set_schedule_enabled(self, bot_id, enabled) -> dict:
+        """Enable/disable a bot's schedule (persists to bot.json)."""
+        if not isinstance(enabled, bool):
+            return {"ok": False, "errors": ["enabled must be true or false"]}
+        with self._lock:
+            bot = self._bots.get(bot_id)
+            if bot is None:
+                return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+            if bot.manifest.schedule is None:
+                return {
+                    "ok": False,
+                    "errors": [f"bot {bot_id} has no schedule in its manifest"],
+                }
+            manifest_path = bot.bot_dir / "bot.json"
+            try:
+                document = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                return {"ok": False, "errors": [f"cannot read bot.json: {exc}"]}
+            document.setdefault("schedule", {})["enabled"] = enabled
+            manifest, errors = validate_manifest(document)
+            if manifest is None:
+                return {"ok": False, "errors": errors}
+            manifest_path.write_text(
+                json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            bot.manifest = manifest
+        return {"ok": True, "id": bot_id, "schedule": manifest.schedule}
 
     # ------------------------------------------------------------------ #
     # Installation                                                       #
@@ -221,6 +296,11 @@ class Supervisor:
         for record in bots:
             state = record["state"]
             by_state[state] = by_state.get(state, 0) + 1
+        scheduled = sum(
+            1
+            for bot in self._bots.values()
+            if bot.manifest.schedule and bot.manifest.schedule.get("enabled", True)
+        )
         return {
             "ok": True,
             "total": len(bots),
@@ -232,8 +312,12 @@ class Supervisor:
             ),
             "failed": by_state.get(BotState.FAILED, 0),
             "completed": by_state.get(BotState.COMPLETED, 0),
+            "scheduled": scheduled,
             "restarts": sum(int(record.get("restarts", 0) or 0) for record in bots),
             "runs": sum(int(record.get("run_count", 0) or 0) for record in bots),
+            "cpu_seconds": round(
+                sum(float(record.get("cpu_seconds", 0.0) or 0.0) for record in bots), 3
+            ),
         }
 
     def export_logs(self, bot_id) -> dict:
@@ -333,9 +417,31 @@ class Supervisor:
                             f"host has {sys.version_info[0]}.{sys.version_info[1]}"
                         ],
                     }
+            missing = None
+            if self._requirements_checker is not None and self.requirements_policy != "off":
+                missing = self._requirements_checker(bot.manifest)
+                if missing and self.requirements_policy == "enforce":
+                    return {
+                        "ok": False,
+                        "errors": [
+                            f"bot {bot_id} is missing required packages: "
+                            f"{', '.join(missing)} — install them or relax the "
+                            f"requirements policy"
+                        ],
+                    }
+                if missing:
+                    bot.logger.warning(
+                        "missing requirements: " + ", ".join(missing)
+                    )
+            detached = bot.detached
             bot.restarts = 0
             self._launch(bot)
-        return {"ok": True, "id": bot_id, "state": bot.state}
+        response = {"ok": True, "id": bot_id, "state": bot.state}
+        if detached:
+            response["warning"] = (
+                "a previously force-stopped thread may still be running"
+            )
+        return response
 
     def start_autostart_bots(self) -> dict:
         started = []
@@ -353,6 +459,7 @@ class Supervisor:
     def _launch(self, bot: SupervisedBot) -> None:
         """Spawn a fresh run of ``bot``; caller must hold the lock."""
         bot.stop_requested = False
+        bot.detached = False
         bot.stop_event = threading.Event()
         bot.ctx = BotContext(
             bot.manifest.id,
@@ -371,7 +478,9 @@ class Supervisor:
             bot.bot_dir,
             bot.manifest.entrypoint,
             self.stream_hub,
-            on_exit=lambda state, error, b=bot: self._on_exit(b, state, error),
+            on_exit=lambda thread, state, error, cpu_used=None, b=bot: self._on_exit(
+                b, thread, state, error, cpu_used=cpu_used
+            ),
         )
         bot.thread = runner
         runner.start()
@@ -399,10 +508,57 @@ class Supervisor:
                     "state": BotState.STOPPING,
                     "warning": (
                         "bot thread did not exit within the grace period; "
-                        "it is unresponsive and will be reported as STOPPING"
+                        "use force_stop to detach it"
                     ),
                 }
         with self._lock:
+            if bot.state == BotState.STOPPING:
+                bot.state = BotState.STOPPED
+                bot.stopped_at = time.time()
+                bot.restarts = 0
+        return {"ok": True, "id": bot_id, "state": bot.state}
+
+    def force_stop(self, bot_id, grace: float = 2.0) -> dict:
+        """Escalated stop for unresponsive bots (v1.2).
+
+        Python threads cannot be killed in-process, so a thread that ignores
+        the stop event is *detached*: the bot is marked ``FORCE_STOPPED`` and
+        the zombie thread is no longer tracked (its eventual exit callback is
+        ignored). On Android the OS remains the real hard-kill path for the
+        whole host process.
+        """
+        with self._lock:
+            bot = self._bots.get(bot_id)
+            if bot is None:
+                return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+            if bot.state in BotState.TERMINAL:
+                return {"ok": True, "id": bot_id, "state": bot.state}
+            bot.stop_requested = True
+            bot.stop_event.set()
+            bot.state = BotState.STOPPING
+            thread = bot.thread
+        if thread is not None and thread.is_alive():
+            thread.join(grace)
+        with self._lock:
+            if thread is not None and thread.is_alive():
+                bot.detached = True
+                bot.thread = None
+                bot.state = BotState.FORCE_STOPPED
+                bot.stopped_at = time.time()
+                bot.restarts = 0
+                bot.logger.warning(
+                    "force-stopped: the bot thread ignored the stop request and "
+                    "was detached; it may keep running until the host process exits"
+                )
+                return {
+                    "ok": True,
+                    "id": bot_id,
+                    "state": BotState.FORCE_STOPPED,
+                    "warning": (
+                        "thread unresponsive — detached from supervision; it may "
+                        "keep running until the host process exits"
+                    ),
+                }
             if bot.state == BotState.STOPPING:
                 bot.state = BotState.STOPPED
                 bot.stopped_at = time.time()
@@ -432,6 +588,7 @@ class Supervisor:
         return {"ok": True, "id": bot_id}
 
     def shutdown_all(self) -> dict:
+        self._scheduler.shutdown()
         with self._lock:
             running = [
                 bot.manifest.id
@@ -446,11 +603,23 @@ class Supervisor:
     # Restart machinery                                                  #
     # ------------------------------------------------------------------ #
 
-    def _on_exit(self, bot: SupervisedBot, state: str, error) -> None:
+    def _on_exit(
+        self,
+        bot: SupervisedBot,
+        runner: BotRunner,
+        state: str,
+        error,
+        cpu_used=None,
+    ) -> None:
+        if runner is not bot.thread:
+            return  # a detached/zombie run exited — never touch live state
         policy = bot.manifest.restart
         with self._lock:
             bot.stopped_at = time.time()
             bot.last_error = error
+            if cpu_used is not None:
+                bot.cpu_seconds += float(cpu_used)
+                bot.last_cpu_seconds = float(cpu_used)
             if bot.stop_requested:
                 bot.state = BotState.STOPPED
                 bot.restarts = 0

@@ -17,7 +17,7 @@ def test_configure_creates_storage(tmp_path):
     info = host_api.runtime_info()
     assert info["ok"]
     assert info["bots"] == 0
-    assert info["drs_host"] == "1.0.0"
+    assert info["drs_host"] == "1.2.0"
 
 
 def test_configure_requires_argument():
@@ -73,7 +73,7 @@ def test_requirements_check(tmp_path):
         make_bot_dir(
             tmp_path / "src",
             code=LONG_RUNNING_MAIN,
-            manifest={"requirements": ["requests", "numpy>=2.0"]},
+            manifest={"requirements": ["requests", "drs-test-ghost>=1.0"]},
         )
     )
     unknown = host_api.check_requirements("echo-bot")
@@ -82,7 +82,7 @@ def test_requirements_check(tmp_path):
     host_api.set_available_packages(["requests", "aiohttp"])
     result = host_api.check_requirements("echo-bot")
     assert result["known"] is True
-    assert result["missing"] == ["numpy>=2.0"]
+    assert result["missing"] == ["drs-test-ghost>=1.0"]
     assert host_api.available_packages() == ["aiohttp", "requests"]
 
 
