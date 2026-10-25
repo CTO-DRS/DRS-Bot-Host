@@ -25,6 +25,7 @@ __pycache__/
 .venv/
 venv/
 
-# ==== Runtime data (local CLI runs) ====
-data/
+# ==== Runtime data (local CLI runs; anchored so the Kotlin data/ package is tracked) ====
+python-runtime/data/
+data/bot.db
 *.log
