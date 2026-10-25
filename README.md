@@ -10,6 +10,10 @@
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
+> **📥 تحميل التطبيق / Download the APK:**
+> [**DRS-Bot-Host-v1.0.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.0.0/DRS-Bot-Host-v1.0.0-debug.apk) (55 MB, arm64-v8a + x86_64)
+> من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases) — SHA-256: `20079391…cb95501`
+
 </div>
 
 ---
