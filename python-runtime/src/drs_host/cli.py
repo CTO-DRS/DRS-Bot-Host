@@ -108,6 +108,30 @@ def main(argv=None) -> int:
     )
     cmd_serve.add_argument("--port", type=int, default=8090)
     cmd_serve.add_argument("--token", default=None)
+    cmd_serve.add_argument("--cert", default=None, help="TLS cert (PEM) — enables https")
+    cmd_serve.add_argument("--key", default=None, help="TLS key (PEM) — enables https")
+
+    cmd_market = sub.add_parser(
+        "market", help="fetch the curated bot marketplace registry"
+    )
+    cmd_market.add_argument("url", nargs="?", default=None)
+
+    cmd_market_install = sub.add_parser(
+        "market-install", help="install a marketplace bot by its URL"
+    )
+    cmd_market_install.add_argument("url")
+    cmd_market_install.add_argument("--overwrite", action="store_true")
+
+    cmd_backup = sub.add_parser(
+        "backup", help="zip every installed bot into <data-dir>/backups/"
+    )
+    cmd_backup.add_argument("--dest", default=None)
+
+    cmd_restore = sub.add_parser(
+        "restore", help="re-import every bot from a backup zip"
+    )
+    cmd_restore.add_argument("zip")
+    cmd_restore.add_argument("--overwrite", action="store_true")
 
     args = parser.parse_args(argv)
     host_api.configure(args.data_dir)
@@ -182,7 +206,7 @@ def main(argv=None) -> int:
         return 0 if result.get("ok") else 2
 
     if args.command == "serve-status":
-        started = host_api.web_status_start(args.port, args.token)
+        started = host_api.web_status_start(args.port, args.token, args.cert, args.key)
         _print_json(started)
         if not started.get("ok"):
             return 2
@@ -193,6 +217,26 @@ def main(argv=None) -> int:
             host_api.web_status_stop()
             print("status server stopped")
         return 0
+
+    if args.command == "market":
+        result = host_api.marketplace_fetch(args.url)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "market-install":
+        result = host_api.marketplace_install(args.url, args.overwrite)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "backup":
+        result = host_api.backup_all(args.dest)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "restore":
+        result = host_api.restore_backup(args.zip, args.overwrite)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
 
     if args.command == "run":
         return _run(args)

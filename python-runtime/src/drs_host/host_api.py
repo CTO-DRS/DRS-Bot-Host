@@ -324,8 +324,12 @@ def install_bot_requirements(bot_id, timeout: float = None) -> dict:
 # --------------------------------------------------------------------- #
 
 
-def web_status_start(port=None, token=None) -> dict:
-    """Start the LAN status dashboard (opt-in)."""
+def web_status_start(port=None, token=None, certfile=None, keyfile=None) -> dict:
+    """Start the LAN status dashboard (opt-in).
+
+    ``certfile``/``keyfile`` (PEM, both or neither) switch the dashboard to
+    https. The Android bridge passes ``port`` and ``token`` positionally.
+    """
     global _web_server
     from .webstatus import DEFAULT_PORT, FleetStatusServer, _FleetSnapshot
 
@@ -341,7 +345,8 @@ def web_status_start(port=None, token=None) -> dict:
             return {"ok": False, "errors": ["port must be 0-65535"]}
         snapshot = _FleetSnapshot(supervisor, __version__, sys.version.split()[0])
         server = FleetStatusServer(
-            snapshot, host="0.0.0.0", port=resolved_port, token=token
+            snapshot, host="0.0.0.0", port=resolved_port, token=token,
+            certfile=certfile, keyfile=keyfile,
         )
         result = server.start()
         if result.get("ok"):
@@ -363,14 +368,53 @@ def web_status_info() -> dict:
     with _lock:
         server = _web_server
         if server is None or not server.running():
-            return {"ok": True, "running": False, "port": 0}
+            return {"ok": True, "running": False, "port": 0, "tls": False}
         return {
             "ok": True,
             "running": True,
             "host": server.host,
             "port": server.actual_port(),
             "protected": server.token is not None,
+            "tls": server.certfile is not None and server.keyfile is not None,
         }
+
+
+# --------------------------------------------------------------------- #
+# Bot marketplace (v1.4)                                                 #
+# --------------------------------------------------------------------- #
+
+
+def marketplace_fetch(url=None) -> dict:
+    """Fetch + validate a curated bot registry (default: the project's own)."""
+    from . import marketplace
+
+    return marketplace.fetch_registry(url)
+
+
+def marketplace_install(url, overwrite: bool = False) -> dict:
+    """Download a marketplace entry's bot zip and import it (hardened path)."""
+    from . import marketplace
+
+    return marketplace.install_entry(url, _ensure(), overwrite=overwrite)
+
+
+# --------------------------------------------------------------------- #
+# Fleet backup & restore (v1.4)                                          #
+# --------------------------------------------------------------------- #
+
+
+def backup_all(dest=None) -> dict:
+    """Zip every installed bot + metadata into ``<data_dir>/backups/``."""
+    from . import backup
+
+    return backup.create_backup(_ensure(), dest)
+
+
+def restore_backup(zip_path, overwrite: bool = False) -> dict:
+    """Re-import every bot from a backup zip (metadata required)."""
+    from . import backup
+
+    return backup.restore_backup(_ensure(), zip_path, overwrite=overwrite)
 
 
 def shutdown_all() -> dict:

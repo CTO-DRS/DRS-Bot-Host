@@ -17,7 +17,9 @@ def test_configure_creates_storage(tmp_path):
     info = host_api.runtime_info()
     assert info["ok"]
     assert info["bots"] == 0
-    assert info["drs_host"] == "1.2.0"
+    from drs_host import __version__
+
+    assert info["drs_host"] == __version__
 
 
 def test_configure_requires_argument():

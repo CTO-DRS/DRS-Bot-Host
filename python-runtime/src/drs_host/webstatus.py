@@ -12,6 +12,12 @@ present ``?key=...`` or an ``Authorization: Bearer ...`` header, otherwise it
 gets 401. The server binds an explicit host (default ``0.0.0.0``) and an
 explicit port (``0`` = OS-assigned, reported back as ``port``).
 
+Optional TLS (v1.4): pass both ``certfile`` and ``keyfile`` (PEM) and the
+socket is wrapped with an ``ssl`` context — the dashboard is then served
+over ``https://``. Certificates are *user-supplied*: generating them needs
+a third-party library that the embedded Android runtime does not ship, so
+the honest default stays plain HTTP inside the local network.
+
 The server is opt-in: nothing listens until ``web_status_start`` is called
 (from the app's settings or the CLI's ``serve-status`` command).
 """
@@ -19,6 +25,7 @@ The server is opt-in: nothing listens until ``web_status_start`` is called
 from __future__ import annotations
 
 import json
+import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -113,14 +120,30 @@ class FleetStatusServer:
     it returns a structured result instead."""
 
     def __init__(self, snapshot: _FleetSnapshot, host: str = "0.0.0.0",
-                 port: int = DEFAULT_PORT, token: str | None = None):
+                 port: int = DEFAULT_PORT, token: str | None = None,
+                 certfile: str | None = None, keyfile: str | None = None):
         self.snapshot = snapshot
         self.host = host
         self.requested_port = int(port)
         self.token = (str(token).strip() or None) if token else None
+        self.certfile = (str(certfile).strip() or None) if certfile else None
+        self.keyfile = (str(keyfile).strip() or None) if keyfile else None
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+
+    def _validate_tls(self) -> list:
+        """Both-or-neither cert/key; files must exist when given."""
+        errors = []
+        if bool(self.certfile) != bool(self.keyfile):
+            errors.append("TLS needs both certfile and keyfile (or neither)")
+        for label, value in (("certfile", self.certfile), ("keyfile", self.keyfile)):
+            if value is not None:
+                try:
+                    open(value, "rb").close()
+                except OSError as exc:
+                    errors.append(f"cannot read {label}: {exc}")
+        return errors
 
     # -- lifecycle -------------------------------------------------------
 
@@ -128,6 +151,9 @@ class FleetStatusServer:
         with self._lock:
             if self._server is not None:
                 return {"ok": True, "port": self.actual_port(), "already": True}
+            tls_errors = self._validate_tls()
+            if tls_errors:
+                return {"ok": False, "errors": tls_errors}
             outer = self
 
             class Handler(BaseHTTPRequestHandler):
@@ -142,6 +168,14 @@ class FleetStatusServer:
                 server.daemon_threads = True
             except OSError as exc:
                 return {"ok": False, "errors": [f"cannot bind {self.host}:{self.requested_port}: {exc}"]}
+            if self.certfile and self.keyfile:
+                try:
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    context.load_cert_chain(self.certfile, self.keyfile)
+                    server.socket = context.wrap_socket(server.socket, server_side=True)
+                except (OSError, ssl.SSLError) as exc:
+                    server.server_close()
+                    return {"ok": False, "errors": [f"cannot enable TLS: {exc}"]}
             self._server = server
             self._thread = threading.Thread(
                 target=server.serve_forever,
