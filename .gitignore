@@ -1,0 +1,30 @@
+# ==== Gradle / Android ====
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.keystore
+*.jks
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated: python-runtime is copied here at build time by :app:syncPythonRuntime
+app/src/main/python/
+
+# ==== Python ====
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# ==== Runtime data (local CLI runs) ====
+data/
+*.log

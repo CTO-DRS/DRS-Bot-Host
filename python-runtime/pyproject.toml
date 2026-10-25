@@ -1,0 +1,12 @@
+[project]
+name = "drs-host"
+version = "1.0.0"
+description = "DRS Bot Host runtime core: bot manifests, safe importer, supervisor and SDK for Python bots"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "DRS Bot Host contributors" }]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

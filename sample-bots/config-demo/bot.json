@@ -1,0 +1,22 @@
+{
+  "id": "config-demo",
+  "name": "Config Demo",
+  "version": "1.0.0",
+  "entrypoint": "main.py",
+  "language": "python",
+  "author": "DRS",
+  "description": "Shows how a bot reads its config section and reports progress.",
+  "requirements": [],
+  "config": {
+    "message": "مرحبًا من DRS Bot Host",
+    "interval_seconds": 0.4,
+    "emit_count": 3
+  },
+  "restart": {
+    "policy": "on_failure",
+    "max_restarts": 2,
+    "backoff_seconds": 1.0,
+    "backoff_multiplier": 2.0
+  },
+  "auto_start": true
+}

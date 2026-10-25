@@ -1,0 +1,18 @@
+{
+  "id": "echo-bot",
+  "name": "Echo Bot",
+  "version": "1.0.0",
+  "entrypoint": "main.py",
+  "language": "python",
+  "author": "DRS",
+  "description": "Heartbeat demo bot: logs a line every second until stopped.",
+  "requirements": [],
+  "config": {},
+  "restart": {
+    "policy": "on_failure",
+    "max_restarts": 3,
+    "backoff_seconds": 2.0,
+    "backoff_multiplier": 2.0
+  },
+  "auto_start": false
+}
