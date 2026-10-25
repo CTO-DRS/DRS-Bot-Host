@@ -53,6 +53,23 @@ def main(argv=None) -> int:
     cmd_stop = sub.add_parser("stop", help="stop a running bot")
     cmd_stop.add_argument("bot_id")
 
+    sub.add_parser("stats", help="aggregate host statistics")
+
+    cmd_scaffold = sub.add_parser(
+        "scaffold", help="generate a ready-to-import sample bot"
+    )
+    cmd_scaffold.add_argument("name")
+    cmd_scaffold.add_argument("--dest", default=".")
+
+    cmd_export = sub.add_parser("export-logs", help="export a bot's logs to a zip")
+    cmd_export.add_argument("bot_id")
+
+    cmd_config = sub.add_parser(
+        "set-config", help="replace a bot's config (JSON object string)"
+    )
+    cmd_config.add_argument("bot_id")
+    cmd_config.add_argument("json")
+
     args = parser.parse_args(argv)
     host_api.configure(args.data_dir)
 
@@ -71,6 +88,25 @@ def main(argv=None) -> int:
 
     if args.command == "stop":
         result = host_api.stop_bot(args.bot_id)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "stats":
+        _print_json(host_api.host_stats())
+        return 0
+
+    if args.command == "scaffold":
+        result = host_api.scaffold_bot(args.name, args.dest)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "export-logs":
+        result = host_api.export_logs(args.bot_id)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "set-config":
+        result = host_api.set_bot_config(args.bot_id, args.json)
         _print_json(result)
         return 0 if result.get("ok") else 2
 

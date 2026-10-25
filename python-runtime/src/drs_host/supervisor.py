@@ -19,6 +19,7 @@ import shutil
 import sys
 import threading
 import time
+import zipfile
 from pathlib import Path
 
 from . import importer
@@ -26,6 +27,8 @@ from .logging import BotLogger, JsonlFileSink, RingBuffer
 from .manifest import BotManifest, validate_manifest, python_version_tuple
 from .runner import BotRunner
 from .sdk import BotContext
+
+CONFIG_MAX_BYTES = 64 * 1024
 
 
 class BotState:
@@ -53,6 +56,7 @@ class SupervisedBot:
             manifest.id, manifest.name, manifest.config, self.stop_event, None
         )
         self.restarts = 0
+        self.run_count = 0
         self.last_error = None
         self.started_at = None
         self.stopped_at = None
@@ -73,15 +77,28 @@ class SupervisedBot:
             "description": self.manifest.description,
             "author": self.manifest.author,
             "requirements": self.manifest.requirements,
+            "config": self.manifest.config,
             "auto_start": self.manifest.auto_start,
             "restart_policy": self.manifest.restart,
             "state": self.state,
             "restarts": self.restarts,
+            "run_count": self.run_count,
+            "uptime_seconds": self._uptime_seconds(),
             "last_error": self.last_error,
             "started_at": self.started_at,
             "stopped_at": self.stopped_at,
             "progress": self.ctx.snapshot_progress(),
         }
+
+    def _uptime_seconds(self):
+        """Live uptime while active; last run duration once terminal/backoff."""
+        if self.started_at is None:
+            return None
+        if self.state in (BotState.STARTING, BotState.RUNNING, BotState.STOPPING):
+            return max(0.0, round(time.time() - self.started_at, 3))
+        if self.stopped_at is not None:
+            return max(0.0, round(self.stopped_at - self.started_at, 3))
+        return None
 
 
 class Supervisor:
@@ -196,6 +213,103 @@ class Supervisor:
             return []
         return bot.ring.recent(limit)
 
+    def host_stats(self) -> dict:
+        """Aggregate fleet statistics for the dashboard."""
+        with self._lock:
+            bots = [bot.status() for bot in self._bots.values()]
+        by_state: dict = {}
+        for record in bots:
+            state = record["state"]
+            by_state[state] = by_state.get(state, 0) + 1
+        return {
+            "ok": True,
+            "total": len(bots),
+            "by_state": by_state,
+            "running": (
+                by_state.get(BotState.RUNNING, 0)
+                + by_state.get(BotState.STARTING, 0)
+                + by_state.get(BotState.BACKOFF, 0)
+            ),
+            "failed": by_state.get(BotState.FAILED, 0),
+            "completed": by_state.get(BotState.COMPLETED, 0),
+            "restarts": sum(int(record.get("restarts", 0) or 0) for record in bots),
+            "runs": sum(int(record.get("run_count", 0) or 0) for record in bots),
+        }
+
+    def export_logs(self, bot_id) -> dict:
+        """Bundle a bot's JSONL logs into ``<data_dir>/exports/<id>-<stamp>.zip``."""
+        with self._lock:
+            bot = self._bots.get(bot_id)
+        if bot is None:
+            return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+        exports_dir = self.bots_root.parent / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+        path = exports_dir / f"{bot_id}-logs-{stamp}.zip"
+        files = 0
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            logs_dir = bot.bot_dir / "logs"
+            if logs_dir.is_dir():
+                for item in sorted(logs_dir.iterdir()):
+                    if item.is_file():
+                        archive.write(item, arcname=item.name)
+                        files += 1
+        return {
+            "ok": True,
+            "id": bot_id,
+            "path": str(path),
+            "files": files,
+            "bytes": path.stat().st_size,
+        }
+
+    def set_config(self, bot_id, config) -> dict:
+        """Merge/replace a bot's ``config`` object in bot.json.
+
+        Accepts a dict or a JSON string (the Android bridge passes strings).
+        The new config is validated through the full manifest validator and
+        takes effect on the bot's next start.
+        """
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except json.JSONDecodeError as exc:
+                return {"ok": False, "errors": [f"config is not valid JSON: {exc}"]}
+        if not isinstance(config, dict):
+            return {"ok": False, "errors": ["config must be a JSON object"]}
+        try:
+            encoded = json.dumps(config, ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            return {"ok": False, "errors": [f"config is not JSON-serializable: {exc}"]}
+        if len(encoded.encode("utf-8")) > CONFIG_MAX_BYTES:
+            return {
+                "ok": False,
+                "errors": [f"config too large (limit {CONFIG_MAX_BYTES} bytes)"],
+            }
+        with self._lock:
+            bot = self._bots.get(bot_id)
+            if bot is None:
+                return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+            manifest_path = bot.bot_dir / "bot.json"
+            try:
+                document = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                return {"ok": False, "errors": [f"cannot read bot.json: {exc}"]}
+            document["config"] = config
+            manifest, errors = validate_manifest(document)
+            if manifest is None:
+                return {"ok": False, "errors": errors}
+            manifest_path.write_text(
+                json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            bot.manifest = manifest
+        return {
+            "ok": True,
+            "id": bot_id,
+            "config": config,
+            "note": "applies on next start",
+        }
+
     # ------------------------------------------------------------------ #
     # Lifecycle                                                          #
     # ------------------------------------------------------------------ #
@@ -251,6 +365,7 @@ class Supervisor:
         bot.started_at = time.time()
         bot.stopped_at = None
         bot.last_error = None
+        bot.run_count += 1
         runner = BotRunner(
             bot.ctx,
             bot.bot_dir,

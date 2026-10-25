@@ -10,9 +10,10 @@ from __future__ import annotations
 import re
 import sys
 import threading
+import time
 from pathlib import Path
 
-from . import __version__
+from . import __version__, scaffold
 from .streams import ThreadAwareStream
 from .supervisor import Supervisor
 
@@ -21,6 +22,7 @@ _data_dir: str | None = None
 _available_packages: set | None = None
 _hub: ThreadAwareStream | None = None
 _lock = threading.Lock()
+_STARTED_AT = time.time()
 
 
 def configure(data_dir, *, limits=None) -> dict:
@@ -62,6 +64,7 @@ def runtime_info() -> dict:
         "platform": sys.platform,
         "data_dir": _data_dir,
         "bots": len(supervisor.list_bots()),
+        "uptime_seconds": round(time.time() - _STARTED_AT, 3),
     }
 
 
@@ -143,6 +146,31 @@ def start_autostart_bots() -> dict:
 
 def recent_logs(bot_id, limit: int = 500) -> list:
     return _ensure().recent_logs(bot_id, limit)
+
+
+def host_stats() -> dict:
+    """Fleet-wide dashboard statistics + host uptime."""
+    stats = _ensure().host_stats()
+    stats["uptime_seconds"] = round(time.time() - _STARTED_AT, 3)
+    return stats
+
+
+def export_logs(bot_id) -> dict:
+    """Zip a bot's JSONL logs into ``<data_dir>/exports/`` and return its path."""
+    return _ensure().export_logs(bot_id)
+
+
+def set_bot_config(bot_id, config) -> dict:
+    """Update a bot's ``config`` (dict or JSON string); applies on next start.
+
+    The Android bridge passes a JSON string positionally via callAttr.
+    """
+    return _ensure().set_config(bot_id, config)
+
+
+def scaffold_bot(name, dest) -> dict:
+    """Generate a ready-to-import sample bot folder."""
+    return scaffold.scaffold_bot(str(name), dest)
 
 
 def shutdown_all() -> dict:
