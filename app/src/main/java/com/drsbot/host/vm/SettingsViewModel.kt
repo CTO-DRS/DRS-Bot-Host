@@ -27,6 +27,7 @@ class SettingsViewModel(
             keepCpuAwake = true,
             crashAlerts = true,
             accent = "cyan",
+            requirementsPolicy = "warn",
         ),
     )
     val settings: StateFlow<HostSettings> = _settings.asStateFlow()
@@ -39,7 +40,18 @@ class SettingsViewModel(
 
     init {
         viewModelScope.launch {
-            settingsStore.settings.collect { _settings.value = it }
+            settingsStore.settings.collect { value ->
+                val previous = _settings.value.requirementsPolicy
+                _settings.value = value
+                // Push the persisted policy into the Python runtime on change.
+                if (value.requirementsPolicy != previous) {
+                    repository.setRequirementsPolicy(appContext, value.requirementsPolicy)
+                }
+            }
+        }
+        // Make sure the runtime policy matches the persisted one on entry.
+        viewModelScope.launch {
+            repository.setRequirementsPolicy(appContext, _settings.value.requirementsPolicy)
         }
         refreshRuntime()
         refreshBatteryState()
@@ -75,5 +87,10 @@ class SettingsViewModel(
 
     fun setAccent(key: String) = viewModelScope.launch {
         settingsStore.setAccent(key)
+    }
+
+    fun setRequirementsPolicy(policy: String) = viewModelScope.launch {
+        settingsStore.setRequirementsPolicy(policy)
+        repository.setRequirementsPolicy(appContext, policy)
     }
 }

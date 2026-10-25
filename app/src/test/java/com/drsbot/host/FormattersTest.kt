@@ -31,4 +31,16 @@ class FormattersTest {
         assertEquals("1h 01m", com.drsbot.host.util.Formatters.formatUptime(3_675.0))
         assertEquals("0s", com.drsbot.host.util.Formatters.formatUptime(0.0))
     }
+
+    @Test
+    fun formatCpu_handlesNullAndValues() {
+        assertEquals("--", com.drsbot.host.util.Formatters.formatCpu(null))
+        assertEquals("--", com.drsbot.host.util.Formatters.formatCpu(-0.5))
+        assertEquals("--", com.drsbot.host.util.Formatters.formatCpu(Double.NaN))
+        assertEquals("0.00s", com.drsbot.host.util.Formatters.formatCpu(0.0))
+        assertEquals("0.42s", com.drsbot.host.util.Formatters.formatCpu(0.42))
+        assertEquals("12.50s", com.drsbot.host.util.Formatters.formatCpu(12.5))
+        assertEquals("1m 05s", com.drsbot.host.util.Formatters.formatCpu(65.4))
+        assertEquals("1h 01m", com.drsbot.host.util.Formatters.formatCpu(3_675.0))
+    }
 }

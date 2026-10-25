@@ -23,6 +23,7 @@ class SettingsStore private constructor(private val context: Context) {
             keepCpuAwake = prefs[KEY_KEEP_CPU_AWAKE] ?: true,
             crashAlerts = prefs[KEY_CRASH_ALERTS] ?: true,
             accent = prefs[KEY_ACCENT] ?: "cyan",
+            requirementsPolicy = prefs[KEY_REQUIREMENTS_POLICY] ?: "warn",
         )
     }
 
@@ -46,12 +47,17 @@ class SettingsStore private constructor(private val context: Context) {
         context.dataStore.edit { it[KEY_ACCENT] = key }
     }
 
+    suspend fun setRequirementsPolicy(policy: String) {
+        context.dataStore.edit { it[KEY_REQUIREMENTS_POLICY] = policy }
+    }
+
     companion object {
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_service_on_boot")
         private val KEY_AUTO_START_BOTS = booleanPreferencesKey("auto_start_bots")
         private val KEY_KEEP_CPU_AWAKE = booleanPreferencesKey("keep_cpu_awake")
         private val KEY_CRASH_ALERTS = booleanPreferencesKey("crash_alerts")
         private val KEY_ACCENT = stringPreferencesKey("accent_color")
+        private val KEY_REQUIREMENTS_POLICY = stringPreferencesKey("requirements_policy")
 
         @Volatile
         private var instance: SettingsStore? = null

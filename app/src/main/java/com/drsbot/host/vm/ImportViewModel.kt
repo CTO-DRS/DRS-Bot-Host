@@ -72,6 +72,22 @@ class ImportViewModel(private val appContext: Context) : ViewModel() {
         }
     }
 
+    /** Downloads a bot zip over HTTP(S) and imports it (GitHub links supported). */
+    fun importUrl(rawUrl: String) {
+        val url = rawUrl.trim()
+        if (url.isEmpty()) {
+            _state.value = ImportUiState.Failure(listOf("Enter a bot URL first"))
+            return
+        }
+        _state.value = ImportUiState.Working
+        viewModelScope.launch {
+            val result = runCatching {
+                repository.importUrl(appContext, url, _overwrite.value).getOrThrow()
+            }
+            publish(result)
+        }
+    }
+
     private fun publish(result: Result<ImportResult>) {
         result.fold(
             onSuccess = { import ->

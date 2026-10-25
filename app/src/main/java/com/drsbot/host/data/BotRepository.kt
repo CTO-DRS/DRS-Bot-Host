@@ -81,8 +81,35 @@ class BotRepository {
     suspend fun stop(context: Context, botId: String): Result<Boolean> =
         action(context, "stop_bot", botId)
 
+    suspend fun forceStop(context: Context, botId: String): Result<Boolean> =
+        action(context, "force_stop_bot", botId)
+
     suspend fun restart(context: Context, botId: String): Result<Boolean> =
         action(context, "restart_bot", botId)
+
+    suspend fun setScheduleEnabled(
+        context: Context,
+        botId: String,
+        enabled: Boolean,
+    ): Result<Boolean> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("set_schedule_enabled", botId, enabled)),
+        )
+        requireOk(obj)
+        true
+    }
+
+    suspend fun setBotConfig(
+        context: Context,
+        botId: String,
+        configJson: String,
+    ): Result<Boolean> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("set_bot_config", botId, configJson)),
+        )
+        requireOk(obj)
+        true
+    }
 
     suspend fun remove(context: Context, botId: String): Result<Boolean> =
         action(context, "remove_bot", botId)
@@ -90,6 +117,16 @@ class BotRepository {
     suspend fun stopAll(context: Context): Result<Boolean> =
         call(context) { api ->
             val obj = JSONObject(PyBridge.dumps(api.callAttr("shutdown_all")))
+            requireOk(obj)
+            true
+        }
+
+    /** off | warn | enforce — what start() does about missing requirements. */
+    suspend fun setRequirementsPolicy(context: Context, policy: String): Result<Boolean> =
+        call(context) { api ->
+            val obj = JSONObject(
+                PyBridge.dumps(api.callAttr("set_requirements_policy", policy)),
+            )
             requireOk(obj)
             true
         }
@@ -127,6 +164,18 @@ class BotRepository {
     ): Result<ImportResult> = call(context) { api ->
         val obj = JSONObject(
             PyBridge.dumps(api.callAttr("import_folder", folder.absolutePath, overwrite)),
+        )
+        ImportResult.fromJson(obj)
+    }
+
+    /** Downloads a bot zip over HTTP(S) and imports it through the host. */
+    suspend fun importUrl(
+        context: Context,
+        url: String,
+        overwrite: Boolean = false,
+    ): Result<ImportResult> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("import_bot_url", url, overwrite)),
         )
         ImportResult.fromJson(obj)
     }

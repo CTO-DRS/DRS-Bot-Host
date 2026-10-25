@@ -16,10 +16,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -73,6 +77,36 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 text = stringResource(R.string.import_title),
                 style = MaterialTheme.typography.headlineMedium,
             )
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.import_url_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.import_url_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                var url by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.import_url_hint)) },
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = { vm.importUrl(url) },
+                        enabled = state !is ImportUiState.Working && url.isNotBlank(),
+                    ) {
+                        Text(stringResource(R.string.import_url_button))
+                    }
+                }
+            }
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(

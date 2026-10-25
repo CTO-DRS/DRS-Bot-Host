@@ -54,7 +54,30 @@
     <string name="import_pick_zip">Pick ZIP archive</string>
     <string name="import_pick_folder">Pick project folder</string>
     <string name="import_overwrite">Overwrite existing bot with the same id</string>
-    <string name="import_note">A valid bot contains bot.json (manifest) and a Python entrypoint. Allowed files: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. Max 25 MB archive / 100 MB extracted.</string>
+    <string name="bot_cpu">cpu</string>
+    <string name="bot_force_stop">Force stop</string>
+    <string name="bot_schedule_section">Schedule</string>
+    <string name="bot_schedule_kind">Kind: %1$s</string>
+    <string name="bot_schedule_next">Next window: %1$s</string>
+    <string name="bot_schedule_active">Inside an active window</string>
+    <string name="bot_schedule_disabled">Schedule paused</string>
+    <string name="bot_config_section">Config editor</string>
+    <string name="bot_config_hint">Edit the bot's config JSON (validated by the host, applied on next start).</string>
+    <string name="bot_config_save">Save config</string>
+    <string name="import_url_title">Import from URL</string>
+    <string name="import_url_note">Downloads a bot zip over HTTPS. GitHub links work: a repo URL (default branch), a /tree/BRANCH link, or a direct .zip.</string>
+    <string name="import_url_hint">https://github.com/owner/repo</string>
+    <string name="import_url_button">Download &amp; import</string>
+    <string name="system_host_rss">Host process memory</string>
+    <string name="system_scheduled">Scheduled bots</string>
+    <string name="settings_requirements">Requirements policy</string>
+    <string name="settings_requirements_summary">What to do when a bot declares packages that are not baked into the APK: ignore, warn in logs, or block the start.</string>
+    <string name="req_policy_off">Off</string>
+    <string name="req_policy_warn">Warn</string>
+    <string name="req_policy_enforce">Enforce</string>
+    <string name="state_FORCE_STOPPED">Force stopped</string>
+
+        <string name="import_note">A valid bot contains bot.json (manifest) and a Python entrypoint. Allowed files: py, json, txt, md, csv, ini, cfg, yaml, yml, toml. Max 25 MB archive / 100 MB extracted.</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_appearance">Appearance</string>

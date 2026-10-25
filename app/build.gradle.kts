@@ -13,8 +13,8 @@ android {
         applicationId = "com.drsbot.host"
         minSdk = 26          // Chaquopy requires >= 24; 26 enables modern notification APIs
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         // Chaquopy requirement: explicit ABI filters (it ships a native
         // CPython runtime per ABI). Python 3.12 wheels exist only for

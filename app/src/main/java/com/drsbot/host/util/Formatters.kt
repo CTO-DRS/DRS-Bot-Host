@@ -36,4 +36,13 @@ object Formatters {
         if (seconds == null || seconds.isNaN() || seconds < 0) return "--"
         return formatDuration(seconds.toLong())
     }
+
+    /** 0.42 -> "0.42s"; 65.0 -> "1m 05s"; null -> "--". */
+    fun formatCpu(seconds: Double?): String {
+        if (seconds == null || seconds.isNaN() || seconds < 0) return "--"
+        if (seconds < 60) {
+            return String.format(Locale.US, "%.2fs", seconds)
+        }
+        return formatDuration(seconds.toLong())
+    }
 }

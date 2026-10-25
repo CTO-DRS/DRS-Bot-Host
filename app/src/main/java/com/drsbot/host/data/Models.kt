@@ -25,10 +25,21 @@ data class BotStatus(
     val progressValue: Int?,
     val progressTotal: Int?,
     val progressLabel: String?,
+    val cpuSeconds: Double = 0.0,
+    val lastCpuSeconds: Double? = null,
+    val detached: Boolean = false,
+    val scheduleKind: String? = null,
+    val scheduleEnabled: Boolean = false,
+    val scheduleNextStartAt: Double? = null,
+    val configJson: String = "{}",
 ) {
     /** Mirrors BotState.TERMINAL on the Python side. */
     val isTerminal: Boolean
-        get() = state == "STOPPED" || state == "COMPLETED" || state == "FAILED"
+        get() = state == "STOPPED" || state == "COMPLETED" ||
+            state == "FAILED" || state == "FORCE_STOPPED"
+
+    val hasSchedule: Boolean
+        get() = scheduleKind != null
 
     companion object {
         fun fromJson(o: JSONObject): BotStatus {
@@ -56,6 +67,26 @@ data class BotStatus(
                 progressValue = progress?.optNullableInt("value"),
                 progressTotal = progress?.optNullableInt("total"),
                 progressLabel = progress?.optString("label")?.takeIf { it.isNotBlank() },
+                cpuSeconds = o.optDouble("cpu_seconds", 0.0).takeIf { !it.isNaN() } ?: 0.0,
+                lastCpuSeconds = if (o.isNull("last_cpu_seconds")) {
+                    null
+                } else {
+                    o.optDouble("last_cpu_seconds").takeIf { !it.isNaN() }
+                },
+                detached = o.optBoolean("detached", false),
+                scheduleKind = o.optJSONObject("schedule")
+                    ?.optString("kind")
+                    ?.takeIf { it.isNotBlank() },
+                scheduleEnabled = o.optJSONObject("schedule")
+                    ?.optBoolean("enabled", false) ?: false,
+                scheduleNextStartAt = if (o.isNull("schedule_state")) {
+                    null
+                } else {
+                    o.optJSONObject("schedule_state")
+                        ?.optDouble("next_start_at")
+                        ?.takeIf { !it.isNaN() }
+                },
+                configJson = o.optJSONObject("config")?.toString() ?: "{}",
             )
         }
     }
@@ -108,7 +139,7 @@ data class ImportResult(
     }
 }
 
-/** Fleet-wide aggregates produced by host_stats() (v1.1). */
+/** Fleet-wide aggregates produced by host_stats() (v1.1 + v1.2 fields). */
 data class HostStats(
     val total: Int,
     val running: Int,
@@ -117,6 +148,9 @@ data class HostStats(
     val runs: Int,
     val uptimeSeconds: Double,
     val byState: Map<String, Int>,
+    val scheduled: Int = 0,
+    val cpuSeconds: Double = 0.0,
+    val processRssBytes: Long = 0,
 ) {
     companion object {
         fun fromJson(o: JSONObject): HostStats {
@@ -136,6 +170,9 @@ data class HostStats(
                 runs = o.optInt("runs", 0),
                 uptimeSeconds = o.optDouble("uptime_seconds", 0.0),
                 byState = byState,
+                scheduled = o.optInt("scheduled", 0),
+                cpuSeconds = o.optDouble("cpu_seconds", 0.0).takeIf { !it.isNaN() } ?: 0.0,
+                processRssBytes = o.optLong("process_rss_bytes", 0),
             )
         }
     }
@@ -163,6 +200,7 @@ data class HostSettings(
     val keepCpuAwake: Boolean = true,
     val crashAlerts: Boolean = true,
     val accent: String = "cyan",
+    val requirementsPolicy: String = "warn",
 )
 
 /** Metadata about the embedded Python runtime (Settings screen). */

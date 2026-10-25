@@ -17,11 +17,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,6 +87,11 @@ fun BotDetailScreen(
         }
     }
 
+    // Fill the config editor once the first status payload arrives.
+    LaunchedEffect(state.status?.id, state.status?.configJson) {
+        vm.loadConfigIntoEditor()
+    }
+
     GlowBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
@@ -142,9 +150,54 @@ fun BotDetailScreen(
                                 value = (state.status?.restarts ?: 0).toString(),
                             )
                             DetailStat(
+                                label = stringResource(R.string.bot_cpu),
+                                value = Formatters.formatCpu(state.status?.cpuSeconds),
+                            )
+                            DetailStat(
                                 label = stringResource(R.string.bot_policy),
                                 value = state.status?.restartPolicy ?: "--",
                             )
+                        }
+                    }
+                }
+                item {
+                    val status = state.status
+                    if (status?.hasSchedule == true) {
+                        GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                            SectionHeader(stringResource(R.string.bot_schedule_section))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            ) {
+                                Column {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.bot_schedule_kind,
+                                            status.scheduleKind ?: "?",
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        text = if (status.scheduleEnabled) {
+                                            status.scheduleNextStartAt?.let {
+                                                stringResource(
+                                                    R.string.bot_schedule_next,
+                                                    timeFormat.format(Date((it * 1000).toLong())),
+                                                )
+                                            } ?: stringResource(R.string.bot_schedule_active)
+                                        } else {
+                                            stringResource(R.string.bot_schedule_disabled)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = com.drsbot.host.ui.theme.TextSecondary,
+                                    )
+                                }
+                                Switch(
+                                    checked = status.scheduleEnabled,
+                                    onCheckedChange = { vm.toggleSchedule(it) },
+                                )
+                            }
                         }
                     }
                 }
@@ -200,6 +253,18 @@ fun BotDetailScreen(
                                     Text(stringResource(R.string.bot_start))
                                 }
                             }
+                            if (current != null &&
+                                (current.state == "STOPPING" || current.detached)
+                            ) {
+                                Button(
+                                    onClick = { vm.forceStop() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = NeonRed,
+                                    ),
+                                ) {
+                                    Text(stringResource(R.string.bot_force_stop))
+                                }
+                            }
                             OutlinedButton(onClick = { vm.restart() }) {
                                 Text(stringResource(R.string.bot_restart))
                             }
@@ -245,6 +310,51 @@ fun BotDetailScreen(
                                 text = "${export.files} files · ${Formatters.formatBytes(export.bytes)}",
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                        }
+                    }
+                }
+                item {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        SectionHeader(stringResource(R.string.bot_config_section))
+                        Text(
+                            text = stringResource(R.string.bot_config_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        val configText = state.configText
+                        if (configText != null) {
+                            OutlinedTextField(
+                                value = configText,
+                                onValueChange = vm::onConfigChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 3,
+                                maxLines = 10,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = DrsThemeTokens.logFontFamily,
+                                ),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            ) {
+                                Button(onClick = { vm.saveConfig() }) {
+                                    Text(stringResource(R.string.bot_config_save))
+                                }
+                                state.configMessage?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (state.configError) {
+                                            NeonRed
+                                        } else {
+                                            MaterialTheme.colorScheme.primary
+                                        },
+                                    )
+                                }
+                            }
+                        } else {
+                            Text("...", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

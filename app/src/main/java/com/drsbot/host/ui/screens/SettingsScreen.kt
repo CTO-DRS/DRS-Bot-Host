@@ -27,6 +27,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -102,6 +104,37 @@ fun SettingsScreen() {
                             color = color,
                             selected = settings.accent == key,
                             onSelect = { vm.setAccent(key) },
+                        )
+                    }
+                }
+            }
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(stringResource(R.string.settings_requirements))
+                Text(
+                    text = stringResource(R.string.settings_requirements_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("off", "warn", "enforce").forEach { policy ->
+                        FilterChip(
+                            selected = settings.requirementsPolicy == policy,
+                            onClick = { vm.setRequirementsPolicy(policy) },
+                            label = {
+                                Text(
+                                    when (policy) {
+                                        "off" -> stringResource(R.string.req_policy_off)
+                                        "enforce" -> stringResource(R.string.req_policy_enforce)
+                                        else -> stringResource(R.string.req_policy_warn)
+                                    },
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(
+                                    alpha = 0.2f,
+                                ),
+                            ),
                         )
                     }
                 }

@@ -144,6 +144,18 @@ fun DashboardScreen(
                         label = stringResource(R.string.system_host_uptime),
                         value = Formatters.formatUptime(stats?.uptimeSeconds),
                     )
+                    InfoRow(
+                        label = stringResource(R.string.system_host_rss),
+                        value = if ((stats?.processRssBytes ?: 0) > 0) {
+                            Formatters.formatBytes(stats!!.processRssBytes)
+                        } else {
+                            "--"
+                        },
+                    )
+                    InfoRow(
+                        label = stringResource(R.string.system_scheduled),
+                        value = (stats?.scheduled ?: 0).toString(),
+                    )
                 }
             }
 
@@ -250,7 +262,7 @@ internal fun InfoRow(label: String, value: String) {
 internal fun stateColor(state: String) = when (state) {
     "RUNNING" -> com.drsbot.host.ui.theme.NeonMint
     "BACKOFF" -> com.drsbot.host.ui.theme.NeonAmber
-    "FAILED" -> com.drsbot.host.ui.theme.NeonRed
+    "FAILED", "FORCE_STOPPED" -> com.drsbot.host.ui.theme.NeonRed
     "COMPLETED" -> com.drsbot.host.ui.theme.NeonCyan
     else -> com.drsbot.host.ui.theme.TextSecondary
 }

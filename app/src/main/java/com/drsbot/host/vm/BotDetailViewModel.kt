@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONTokener
 
 data class BotDetailState(
     val status: BotStatus? = null,
@@ -21,6 +22,9 @@ data class BotDetailState(
     val error: String? = null,
     val export: ExportResult? = null,
     val exportError: String? = null,
+    val configText: String? = null,
+    val configMessage: String? = null,
+    val configError: Boolean = false,
 )
 
 /** Polls one bot's status + logs for the detail screen. */
@@ -47,19 +51,65 @@ class BotDetailViewModel(
         val statusResult = repository.botStatus(appContext, botId)
         val logsResult = repository.recentLogs(appContext, botId, limit = 400)
         val reqResult = repository.checkRequirements(appContext, botId)
+        val current = _state.value
         _state.value = BotDetailState(
             status = statusResult.getOrNull(),
             logs = logsResult.getOrDefault(emptyList()),
             requirements = reqResult.getOrNull(),
             error = statusResult.exceptionOrNull()?.message,
+            // keep the user's in-progress editor content across polls
+            configText = current.configText,
+            configMessage = current.configMessage,
+            configError = current.configError,
         )
+    }
+
+    /** Pretty-prints the bot's current config into the editor (once). */
+    fun loadConfigIntoEditor() {
+        val config = _state.value.status?.configJson ?: return
+        if (_state.value.configText != null) return
+        val pretty = runCatching {
+            val value = JSONTokener(config).nextValue()
+            value.toString(2)
+        }.getOrDefault(config)
+        _state.value = _state.value.copy(configText = pretty)
+    }
+
+    fun onConfigChange(text: String) {
+        _state.value = _state.value.copy(configText = text, configMessage = null)
+    }
+
+    fun saveConfig() {
+        val text = _state.value.configText ?: return
+        viewModelScope.launch {
+            repository.setBotConfig(appContext, botId, text)
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        configMessage = "saved — applies on next start",
+                        configError = false,
+                    )
+                    refresh()
+                }
+                .onFailure { failure ->
+                    _state.value = _state.value.copy(
+                        configMessage = failure.message ?: "rejected",
+                        configError = true,
+                    )
+                }
+        }
     }
 
     fun start() = launchAction { repository.start(appContext, botId) }
 
     fun stop() = launchAction { repository.stop(appContext, botId) }
 
+    fun forceStop() = launchAction { repository.forceStop(appContext, botId) }
+
     fun restart() = launchAction { repository.restart(appContext, botId) }
+
+    fun toggleSchedule(enabled: Boolean) = launchAction {
+        repository.setScheduleEnabled(appContext, botId, enabled)
+    }
 
     fun remove(onRemoved: () -> Unit) {
         viewModelScope.launch {
