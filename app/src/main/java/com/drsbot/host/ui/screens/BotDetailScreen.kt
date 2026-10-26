@@ -16,8 +16,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -47,6 +50,7 @@ import com.drsbot.host.ui.theme.DrsThemeTokens
 import com.drsbot.host.ui.theme.NeonMint
 import com.drsbot.host.ui.theme.NeonRed
 import com.drsbot.host.util.Formatters
+import com.drsbot.host.util.LogFilter
 import com.drsbot.host.vm.BotDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,10 +85,12 @@ fun BotDetailScreen(
     val clipboardManager = LocalClipboardManager.current
     val listState = rememberLazyListState()
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    val logsUnfiltered = LogFilter.isPassthrough(state.logQuery, state.logLevel)
 
-    LaunchedEffect(state.logs.size) {
-        if (state.logs.isNotEmpty()) {
-            listState.animateScrollToItem(state.logs.size - 1)
+    // Follow the live tail only while no filter hides it.
+    LaunchedEffect(state.filteredLogs.size, logsUnfiltered) {
+        if (logsUnfiltered && state.filteredLogs.isNotEmpty()) {
+            listState.animateScrollToItem(state.filteredLogs.size - 1)
         }
     }
 
@@ -409,7 +415,61 @@ fun BotDetailScreen(
                         modifier = Modifier.padding(start = 4.dp),
                     )
                 }
-                items(state.logs) { record ->
+                item {
+                    OutlinedTextField(
+                        value = state.logQuery,
+                        onValueChange = vm::onLogQueryChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = "search logs",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                stringResource(R.string.bot_logs_search_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = DrsThemeTokens.logFontFamily,
+                        ),
+                    )
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LogFilter.LEVELS.forEach { level ->
+                            FilterChip(
+                                selected = state.logLevel == level,
+                                onClick = { vm.onLogLevelChange(level) },
+                                label = {
+                                    Text(
+                                        text = level,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor =
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                ),
+                            )
+                        }
+                    }
+                }
+                if (state.filteredLogs.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.bot_logs_empty),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = com.drsbot.host.ui.theme.TextSecondary,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                items(state.filteredLogs) { record ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

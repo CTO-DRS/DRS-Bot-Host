@@ -38,6 +38,8 @@
     <string name="bot_restart">Restart</string>
     <string name="bot_remove">Remove</string>
     <string name="bot_logs_title">Live logs</string>
+    <string name="bot_logs_search_hint">Search logs</string>
+    <string name="bot_logs_empty">No log lines match the current filter.</string>
     <string name="bot_requirements_missing">Missing packages (rebuild APK): %1$s</string>
     <string name="bot_runs_label">runs: %1$d</string>
     <string name="bot_runs_uptime">runs: %1$d · uptime: %2$s</string>

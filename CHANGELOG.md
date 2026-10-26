@@ -1,3 +1,21 @@
+## [1.5.0] — 2026-10-26
+
+Closing the "modern tech look + more features" request: log search/filter
+and a branded splash screen on top of the v1.4 fleet platform
+(runtime verified locally at 125/125 pytest).
+
+### Added — Android app (verified by CI build + JVM tests)
+- **Log search & level filter** (bot detail): monospace search field plus
+  ALL / INFO / WARNING / ERROR chips; live-tail autoscroll pauses while a
+  filter is active and resumes when cleared. `LogFilter` is a pure,
+  JVM-unit-tested function (6 new unit tests).
+- **Animated splash screen**: neon sweep ring + pulsing core + wordmark,
+  ~1.4 s, crossfading into the nav host (pure Compose, no new dependency).
+
+### Docs
+- README: v1.5.0 badge + APK link, log-search/splash features, corrected
+  verification row to the actually-run 125/125 count.
+
 ## [1.4.0] — 2026-10-26
 
 Marketplace + fleet backup + status-page security: the post-1.3 roadmap

@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.4.0-blue)
+![version](https://img.shields.io/badge/version-1.5.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.4.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/DRS-Bot-Host-v1.4.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.5.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.5.0/DRS-Bot-Host-v1.5.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -27,8 +27,10 @@ DRS Bot Host turns an Android phone into a small bot server:
   optional boot autostart and partial wake lock.
 - **Restart policies** per bot (`never` / `on_failure` / `always`) with
   exponential backoff, all implemented in the verified Python core.
-- **Watch live logs** per bot (ring buffer + rotating JSONL on disk) and
-  **export them to a zip** with one tap.
+- **Watch live logs** per bot (ring buffer + rotating JSONL on disk),
+  **search them** (free-text query + ALL/INFO/WARNING/ERROR level chips;
+  live-tail autoscroll pauses while filtering) and **export them to a
+  zip** with one tap.
 - **Fleet dashboard**: KPI tiles (bots / active / failed / restarts),
   system telemetry (battery, memory, host uptime).
 - **Crash alerts**: a notification the moment a bot enters `FAILED`.
@@ -45,7 +47,8 @@ DRS Bot Host turns an Android phone into a small bot server:
   optional token) served by the phone itself.
 - **Personalize**: pick the accent color (cyan / violet / mint / amber).
 - **Dark futuristic glass UI** (Kotlin + Jetpack Compose) with an animated
-  engineering-grid backdrop, neon orbs and a scanline sweep.
+  engineering-grid backdrop, neon orbs and a scanline sweep, plus a
+  **branded splash screen** (neon sweep ring, crossfades into the app).
 - **No server, no fees**: the embedded CPython 3.12 runtime (Chaquopy 17.1.0,
   MIT) runs everything on-device.
 
@@ -53,7 +56,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, host_api, cli, scaffold | ✅ **107/107 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **125/125 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -66,7 +69,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 │   ├── src/drs_host/        #   manifest, importer, streams, logging, runner,
 │   │                        #   supervisor, scheduler, downloader, host_api,
 │   │                        #   sdk, cli
-│   └── tests/               #   107 tests
+│   └── tests/               #   125 tests
 ├── sample-bots/             # echo-bot, config-demo (both runnable)
 ├── docs/                    # BOT_SPEC, ARCHITECTURE, BUILD_GUIDE, USER_MANUAL_AR
 ├── .github/workflows/ci.yml # Python tests + Android APK build
@@ -77,7 +80,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 ```bash
 cd python-runtime
-python3 -m pytest tests -q                                   # 107 passed
+python3 -m pytest tests -q                                   # 125 passed
 PYTHONPATH=src python3 -m drs_host.cli --data-dir /tmp/drs \
     run ../sample-bots/echo-bot --seconds 4                  # real hosting demo
 PYTHONPATH=src python3 -m drs_host.cli scaffold "My Bot" --dest /tmp/bots
@@ -142,7 +145,7 @@ Bot contract: **docs/BOT_SPEC.md**.
   (`serve-status --cert/--key` or the API).
 - Fixed: the Import screen rendered the skill-templates card twice.
 
-## Roadmap (post-1.4)
+## Roadmap (post-1.5)
 
 - Termux-style standalone Python binaries for on-device process isolation
   (needs ~30 MB of bundled runtime per ABI — deliberately not faked).

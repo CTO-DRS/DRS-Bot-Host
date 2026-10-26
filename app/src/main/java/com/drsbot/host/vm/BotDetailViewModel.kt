@@ -9,6 +9,7 @@ import com.drsbot.host.data.InstallResult
 import com.drsbot.host.data.LogRecord
 import com.drsbot.host.data.RequirementsCheck
 import com.drsbot.host.di.HostGraph
+import com.drsbot.host.util.LogFilter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,10 +27,16 @@ data class BotDetailState(
     val configText: String? = null,
     val configMessage: String? = null,
     val configError: Boolean = false,
+    val logQuery: String = "",
+    val logLevel: String = LogFilter.LEVELS.first(),
     val installing: Boolean = false,
     val install: InstallResult? = null,
     val installError: String? = null,
-)
+) {
+    /** Log stream narrowed by the active search query + level filter. */
+    val filteredLogs: List<LogRecord>
+        get() = LogFilter.apply(logs, logQuery, logLevel)
+}
 
 /** Polls one bot's status + logs for the detail screen. */
 class BotDetailViewModel(
@@ -65,11 +72,22 @@ class BotDetailViewModel(
             configText = current.configText,
             configMessage = current.configMessage,
             configError = current.configError,
+            // keep the active log search across polls
+            logQuery = current.logQuery,
+            logLevel = current.logLevel,
             // keep transient installer state across polls
             installing = current.installing,
             install = current.install,
             installError = current.installError,
         )
+    }
+
+    fun onLogQueryChange(text: String) {
+        _state.value = _state.value.copy(logQuery = text)
+    }
+
+    fun onLogLevelChange(level: String) {
+        _state.value = _state.value.copy(logLevel = level)
     }
 
     /** Pretty-prints the bot's current config into the editor (once). */

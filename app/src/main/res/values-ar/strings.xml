@@ -38,6 +38,8 @@
     <string name="bot_restart">إعادة تشغيل</string>
     <string name="bot_remove">حذف</string>
     <string name="bot_logs_title">السجلات المباشرة</string>
+    <string name="bot_logs_search_hint">بحث في السجلات</string>
+    <string name="bot_logs_empty">لا توجد سطور سجل مطابقة للتصفية الحالية.</string>
     <string name="bot_requirements_missing">حزم ناقصة (أعد بناء APK): %1$s</string>
     <string name="bot_runs_label">تشغيلات: %1$d</string>
     <string name="bot_runs_uptime">تشغيلات: %1$d · مدة التشغيل: %2$s</string>
