@@ -23,11 +23,11 @@ class LogFilterTest {
     }
 
     @Test
-    fun levelFilter_isCaseInsensitiveExact() {
+    fun levelFilter_isExactMatch() {
         val errors = LogFilter.apply(logs, "", "ERROR")
         assertEquals(listOf("connection refused"), errors.map { it.message })
 
-        val warns = LogFilter.apply(logs, "", "warning")
+        val warns = LogFilter.apply(logs, "", "WARNING")
         assertEquals(listOf("retry scheduled"), warns.map { it.message })
     }
 
@@ -42,9 +42,12 @@ class LogFilterTest {
         val hits = LogFilter.apply(logs, "connection", "ERROR")
         assertEquals(listOf("connection refused"), hits.map { it.message })
 
-        // text matches two records, level keeps only the error one
-        val narrow = LogFilter.apply(logs, "b", "ERROR")
+        // text that matches only the error record survives the level filter
+        val narrow = LogFilter.apply(logs, "refused", "ERROR")
         assertEquals(listOf("connection refused"), narrow.map { it.message })
+
+        // text matching only non-error records intersects to nothing
+        assertTrue(LogFilter.apply(logs, "bot", "ERROR").isEmpty())
     }
 
     @Test
