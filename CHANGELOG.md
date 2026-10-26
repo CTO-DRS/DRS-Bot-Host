@@ -50,6 +50,33 @@ Python binaries stay honestly future work). 168/168 pytest locally.
   "What shipped in v1.6", roadmap updated (registry *editor* remains).
 - BOT_SPEC: `health` manifest row + full Arabic v1.6 section.
 
+## [1.7.0] — 2026-10-26
+
+In-app language switcher (System / English / العربية) and credential
+honesty: hosting bots never required tokens — now the UI says so.
+
+### Added — Android app (verified by CI build + JVM tests)
+- **In-app language switcher**: Settings → Appearance → Language with
+  System default / English / العربية chips, applied instantly via the
+  appcompat per-app locale delegate (`AppCompatDelegate.
+  setApplicationLocales()`). Arabic mirrors the whole layout RTL
+  (`supportsRtl` + full `values-ar` resources, 146/146 keys).
+- **Per-app language integration**: `android:localeConfig` +
+  `locales_config.xml` so Android 13+ keeps the system Settings → Apps →
+  Language picker in sync; on API < 33 appcompat persists the choice.
+- `MainActivity` is now an `AppCompatActivity` (required by the locale
+  delegate); the XML theme parent moved to `Theme.AppCompat.NoActionBar`.
+
+### Changed
+- **Token honesty**: skill-template note now states explicitly that most
+  skills need no tokens or API keys (only the optional Telegram template
+  and the optional status-page shared secret use credentials — hosting
+  plain Python bots requires none).
+
+### Docs
+- README: v1.7.0 badge + APK link, language-switcher feature, an explicit
+  "no tokens required" line in the feature list.
+
 ## [1.5.0] — 2026-10-26
 
 Closing the "modern tech look + more features" request: log search/filter

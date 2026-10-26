@@ -349,6 +349,8 @@ data class HostSettings(
     val webStatusEnabled: Boolean = false,
     val webStatusPort: Int = 8090,
     val webStatusToken: String = "",
+    /** v1.6 UI language: "system" (default), "en", or "ar". */
+    val language: String = "system",
 )
 
 /** One curated bot from the v1.4 marketplace registry. */

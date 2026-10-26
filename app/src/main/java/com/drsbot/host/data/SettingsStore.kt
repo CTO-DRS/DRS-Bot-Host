@@ -28,6 +28,7 @@ class SettingsStore private constructor(private val context: Context) {
             webStatusEnabled = prefs[KEY_WEB_STATUS_ENABLED] ?: false,
             webStatusPort = prefs[KEY_WEB_STATUS_PORT] ?: 8090,
             webStatusToken = prefs[KEY_WEB_STATUS_TOKEN] ?: "",
+            language = prefs[KEY_LANGUAGE] ?: "system",
         )
     }
 
@@ -67,6 +68,10 @@ class SettingsStore private constructor(private val context: Context) {
         context.dataStore.edit { it[KEY_WEB_STATUS_TOKEN] = token }
     }
 
+    suspend fun setLanguage(language: String) {
+        context.dataStore.edit { it[KEY_LANGUAGE] = language }
+    }
+
     companion object {
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_service_on_boot")
         private val KEY_AUTO_START_BOTS = booleanPreferencesKey("auto_start_bots")
@@ -77,6 +82,7 @@ class SettingsStore private constructor(private val context: Context) {
         private val KEY_WEB_STATUS_ENABLED = booleanPreferencesKey("web_status_enabled")
         private val KEY_WEB_STATUS_PORT = intPreferencesKey("web_status_port")
         private val KEY_WEB_STATUS_TOKEN = stringPreferencesKey("web_status_token")
+        private val KEY_LANGUAGE = stringPreferencesKey("ui_language")
 
         @Volatile
         private var instance: SettingsStore? = null

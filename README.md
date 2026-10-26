@@ -45,7 +45,14 @@ DRS Bot Host turns an Android phone into a small bot server:
   (falls back to threads on runtimes without a standalone python binary).
 - **Wi-Fi status page**: opt-in LAN dashboard (dark HTML + JSON API,
   optional token) served by the phone itself.
-- **Personalize**: pick the accent color (cyan / violet / mint / amber).
+- **Personalize**: pick the accent color (cyan / violet / mint / amber) and
+  the interface language (**System / English / العربية**) — Arabic mirrors
+  the whole layout RTL and stays in sync with Android 13's per-app
+  language setting.
+- **No tokens, no accounts**: bots are plain Python scripts hosted
+  locally; the platform never requires tokens or sign-ups. Only opt-in
+  extras use credentials (the Telegram skill template needs a Telegram
+  token; the Wi-Fi status page can optionally be locked with a secret).
 - **Dark futuristic glass UI** (Kotlin + Jetpack Compose) with an animated
   engineering-grid backdrop, neon orbs and a scanline sweep, plus a
   **branded splash screen** (neon sweep ring, crossfades into the app).

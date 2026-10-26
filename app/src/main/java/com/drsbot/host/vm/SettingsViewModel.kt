@@ -3,6 +3,8 @@ package com.drsbot.host.vm
 import android.content.Context
 import android.net.Uri
 import android.os.PowerManager
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.BackupResult
@@ -38,6 +40,7 @@ class SettingsViewModel(
             webStatusEnabled = false,
             webStatusPort = 8090,
             webStatusToken = "",
+            language = "system",
         ),
     )
     val settings: StateFlow<HostSettings> = _settings.asStateFlow()
@@ -156,6 +159,22 @@ class SettingsViewModel(
 
     fun setWebStatusToken(token: String) = viewModelScope.launch {
         settingsStore.setWebStatusToken(token)
+    }
+
+    /**
+     * v1.6 in-app language switch. Persist the preference (drives the chip
+     * UI) and apply the appcompat per-app locale, which recreates the
+     * activity so every stringResource() re-resolves. "system" clears the
+     * override; on Android 13+ the choice also appears in system settings.
+     */
+    fun setLanguage(language: String) = viewModelScope.launch {
+        settingsStore.setLanguage(language)
+        val locales = when (language) {
+            "en" -> LocaleListCompat.forLanguageTags("en")
+            "ar" -> LocaleListCompat.forLanguageTags("ar")
+            else -> LocaleListCompat.getEmptyLocaleList()
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
     }
 
     /** Zip every installed bot into <data>/backups/ and report the path. */

@@ -129,6 +129,42 @@ fun SettingsScreen() {
                         )
                     }
                 }
+
+                Spacer(Modifier.height(12.dp))
+                // v1.6 in-app language switcher: the app ships full English +
+                // Arabic resources; this forces one regardless of the device
+                // locale (applied via the appcompat per-app locale delegate).
+                Text(
+                    text = stringResource(R.string.settings_language),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_language_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("system", "en", "ar").forEach { lang ->
+                        FilterChip(
+                            selected = settings.language == lang,
+                            onClick = { vm.setLanguage(lang) },
+                            label = {
+                                Text(
+                                    when (lang) {
+                                        "en" -> stringResource(R.string.language_english)
+                                        "ar" -> stringResource(R.string.language_arabic)
+                                        else -> stringResource(R.string.language_system)
+                                    },
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(
+                                    alpha = 0.2f,
+                                ),
+                            ),
+                        )
+                    }
+                }
             }
 
             GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {

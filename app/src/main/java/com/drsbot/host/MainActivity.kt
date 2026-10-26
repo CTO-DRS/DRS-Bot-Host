@@ -1,8 +1,8 @@
 package com.drsbot.host
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -25,7 +25,13 @@ val LocalAppContext = staticCompositionLocalOf<android.content.Context> {
     error("LocalAppContext not provided")
 }
 
-class MainActivity : ComponentActivity() {
+/**
+ * AppCompatActivity (not plain ComponentActivity) is required so the
+ * appcompat per-app locale delegate works: the in-app language switcher
+ * calls AppCompatDelegate.setApplicationLocales(), which recreates this
+ * activity and persists the choice on API < 33.
+ */
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

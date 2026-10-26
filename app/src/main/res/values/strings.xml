@@ -86,6 +86,11 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_accent">Accent color</string>
     <string name="settings_accent_summary">Applied instantly across the whole app</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">Choose the interface language — applied instantly (Arabic mirrors the layout RTL)</string>
+    <string name="language_system">System default</string>
+    <string name="language_english">English</string>
+    <string name="language_arabic">العربية</string>
     <string name="settings_autostart_service">Start host service on boot</string>
     <string name="settings_autostart_service_summary">Launches the foreground service after device restart</string>
     <string name="settings_autostart_bots">Auto-start bots marked auto_start</string>
@@ -114,7 +119,7 @@
     <string name="notif_failed_default">The bot exited with an error</string>
 
     <string name="import_skills_title">Skill templates</string>
-    <string name="import_skills_note">One tap creates a working bot from a curated skill — edit it later as you like.</string>
+    <string name="import_skills_note">One tap creates a working bot from a curated skill — edit it later as you like. Most skills need no tokens or API keys at all.</string>
     <string name="import_skills_create">Create bot</string>
     <string name="import_skills_requires">Requires packages: %1$s (install from the bot detail screen)</string>
     <string name="settings_web_status">Wi-Fi status page</string>

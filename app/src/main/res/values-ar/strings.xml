@@ -63,6 +63,11 @@
     <string name="settings_appearance">المظهر</string>
     <string name="settings_accent">لون التمييز</string>
     <string name="settings_accent_summary">يُطبق فورًا على التطبيق بالكامل</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_summary">اختر لغة واجهة التطبيق — تُطبَّق فورًا (العربية تعكس التخطيط من اليمين إلى اليسار)</string>
+    <string name="language_system">لغة النظام</string>
+    <string name="language_english">English</string>
+    <string name="language_arabic">العربية</string>
     <string name="settings_autostart_service">تشغيل خدمة الاستضافة عند الإقلاع</string>
     <string name="settings_autostart_service_summary">تشغّل الخدمة الأمامية بعد إعادة تشغيل الجهاز</string>
     <string name="settings_autostart_bots">تشغيل البوتات المعلّمة auto_start تلقائيًا</string>
@@ -113,7 +118,7 @@
     <string name="req_policy_enforce">إلزام</string>
     <string name="state_FORCE_STOPPED">إيقاف قسري</string>
     <string name="import_skills_title">قوالب المهارات</string>
-    <string name="import_skills_note">بلمسة واحدة تُنشئ بوتًا جاهزًا للعمل من مهارة مُعدّة مسبقًا — عدّله لاحقًا كما تشاء.</string>
+    <string name="import_skills_note">بلمسة واحدة تُنشئ بوتًا جاهزًا للعمل من مهارة مُعدّة مسبقًا — عدّله لاحقًا كما تشاء. معظم المهارات لا تحتاج إلى أي رموز أو مفاتيح وصول.</string>
     <string name="import_skills_create">إنشاء البوت</string>
     <string name="import_skills_requires">يحتاج حزمًا: %1$s (ثبّتها من شاشة تفاصيل البوت)</string>
     <string name="settings_web_status">صفحة الحالة عبر Wi-Fi</string>

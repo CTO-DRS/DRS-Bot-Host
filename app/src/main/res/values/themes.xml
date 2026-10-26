@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Framework theme; all real theming happens in Compose.
+    <!-- AppCompat framework theme (required by AppCompatActivity's locale
+         delegate); all real theming happens in Compose.
          windowBackground matches the Compose canvas to avoid a white flash. -->
-    <style name="Theme.DrsBotHost" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.DrsBotHost" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">#070B14</item>
         <item name="android:statusBarColor">#070B14</item>
         <item name="android:navigationBarColor">#070B14</item>
