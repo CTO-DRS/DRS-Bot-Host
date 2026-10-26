@@ -34,6 +34,7 @@ import json
 import re
 import time
 import urllib.request
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import downloader
@@ -42,7 +43,117 @@ DEFAULT_REGISTRY_URL = (
     "https://raw.githubusercontent.com/CTO-DRS/DRS-Bot-Host/main/registry/registry.json"
 )
 
-REGISTRY_MAX_BYTES = 1024 * 1024  # 1 MB — a registry is metadata, not content
+# --------------------------------------------------------------------------- #
+# Custom (community) registry sources (v1.6)                                 #
+#                                                                            #
+# Users can point the app at their own registry JSON (a GitHub gist, a LAN   #
+# server, anywhere http/https). Sources are persisted as an ordered list of  #
+# URLs in <data_dir>/registry_sources.json; the first entry is the default   #
+# the marketplace fetches when no explicit URL is given.                     #
+# --------------------------------------------------------------------------- #
+
+REGISTRY_SOURCES_FILE = "registry_sources.json"
+MAX_SOURCES = 20
+SOURCE_URL_MAX_LENGTH = 500
+
+
+def _sources_path(data_dir) -> Path:
+    return Path(data_dir) / REGISTRY_SOURCES_FILE
+
+
+def _valid_source_url(url) -> bool:
+    if not isinstance(url, str):
+        return False
+    candidate = url.strip()
+    if not candidate or len(candidate) > SOURCE_URL_MAX_LENGTH:
+        return False
+    parts = urlsplit(candidate)
+    return parts.scheme in ("http", "https") and bool(parts.netloc)
+
+
+def load_registry_sources(data_dir) -> list:
+    """Saved custom registry URLs (oldest first); [] when none/invalid."""
+    path = _sources_path(data_dir)
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return []
+    if not isinstance(document, dict):
+        return []
+    sources = document.get("sources")
+    if not isinstance(sources, list):
+        return []
+    seen = set()
+    ordered = []
+    for entry in sources:
+        if not _valid_source_url(entry):
+            continue
+        normalized = entry.strip()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(normalized)
+    return ordered[:MAX_SOURCES]
+
+
+def _write_sources(data_dir, sources: list) -> dict:
+    path = _sources_path(data_dir)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"sources": sources}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        return {"ok": False, "errors": [f"cannot persist registry sources: {exc}"]}
+    return {"ok": True, "sources": sources}
+
+
+def add_registry_source(data_dir, url) -> dict:
+    """Validate, dedupe and persist one custom registry URL (append)."""
+    if not _valid_source_url(url):
+        return {
+            "ok": False,
+            "errors": [f"unsupported registry URL (http/https only): {url!r}"],
+        }
+    normalized = url.strip()
+    sources = load_registry_sources(data_dir)
+    if normalized in sources:
+        return {"ok": True, "sources": sources, "added": False}
+    if len(sources) >= MAX_SOURCES:
+        return {
+            "ok": False,
+            "errors": [f"too many registry sources (max {MAX_SOURCES})"],
+        }
+    sources.append(normalized)
+    result = _write_sources(data_dir, sources)
+    if result.get("ok"):
+        result["added"] = True
+    return result
+
+
+def remove_registry_source(data_dir, url) -> dict:
+    """Remove one saved registry URL (exact match after strip)."""
+    target = (url or "").strip()
+    sources = load_registry_sources(data_dir)
+    if target not in sources:
+        return {
+            "ok": False,
+            "errors": [f"registry source is not saved: {target!r}"],
+        }
+    sources.remove(target)
+    return _write_sources(data_dir, sources)
+
+
+def resolve_registry_url(data_dir, url=None) -> str:
+    """Explicit URL, else the first saved custom source, else the default."""
+    if url and str(url).strip():
+        return str(url).strip()
+    sources = load_registry_sources(data_dir) if data_dir else []
+    return sources[0] if sources else DEFAULT_REGISTRY_URL
+
+
+REGISTRY_MAX_BYTES = 1024 * 1024  # 1 MB - a registry is metadata, not content
 MAX_ENTRIES = 200
 FETCH_TIMEOUT = 20.0
 

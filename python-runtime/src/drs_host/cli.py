@@ -133,6 +133,31 @@ def main(argv=None) -> int:
     cmd_restore.add_argument("zip")
     cmd_restore.add_argument("--overwrite", action="store_true")
 
+    cmd_health = sub.add_parser(
+        "health", help="show a bot's health config/state (or toggle with --on/--off)"
+    )
+    cmd_health.add_argument("bot_id")
+    toggle = cmd_health.add_mutually_exclusive_group()
+    toggle.add_argument("--on", dest="enable", action="store_true")
+    toggle.add_argument("--off", dest="disable", action="store_true")
+
+    cmd_probe = sub.add_parser(
+        "health-probe", help="run one manual health probe for a bot"
+    )
+    cmd_probe.add_argument("bot_id")
+
+    sub.add_parser(
+        "registry-list", help="list saved custom marketplace registry sources"
+    )
+    cmd_reg_add = sub.add_parser(
+        "registry-add", help="save a custom marketplace registry URL"
+    )
+    cmd_reg_add.add_argument("url")
+    cmd_reg_rm = sub.add_parser(
+        "registry-remove", help="remove a saved custom registry URL"
+    )
+    cmd_reg_rm.add_argument("url")
+
     args = parser.parse_args(argv)
     host_api.configure(args.data_dir)
 
@@ -235,6 +260,42 @@ def main(argv=None) -> int:
 
     if args.command == "restore":
         result = host_api.restore_backup(args.zip, args.overwrite)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "health":
+        if args.enable or args.disable:
+            result = host_api.set_health_enabled(args.bot_id, bool(args.enable))
+            _print_json(result)
+            return 0 if result.get("ok") else 2
+        status = host_api.bot_status(args.bot_id)
+        if not status.get("ok"):
+            _print_json(status)
+            return 2
+        _print_json({
+            "ok": True,
+            "id": args.bot_id,
+            "health": status.get("health"),
+            "health_state": status.get("health_state"),
+        })
+        return 0
+
+    if args.command == "health-probe":
+        result = host_api.probe_health(args.bot_id)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "registry-list":
+        _print_json({"ok": True, "sources": host_api.registry_sources()})
+        return 0
+
+    if args.command == "registry-add":
+        result = host_api.add_registry_source(args.url)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "registry-remove":
+        result = host_api.remove_registry_source(args.url)
         _print_json(result)
         return 0 if result.get("ok") else 2
 

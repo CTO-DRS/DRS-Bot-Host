@@ -221,6 +221,16 @@ def set_schedule_enabled(bot_id, enabled) -> dict:
     return _ensure().set_schedule_enabled(bot_id, enabled)
 
 
+def set_health_enabled(bot_id, enabled) -> dict:
+    """Enable/disable a bot's health checks (persists to bot.json)."""
+    return _ensure().set_health_enabled(bot_id, enabled)
+
+
+def probe_health(bot_id) -> dict:
+    """Run one manual health probe (diagnostic; never auto-recovers)."""
+    return _ensure().probe_health(bot_id)
+
+
 def start_autostart_bots() -> dict:
     return _ensure().start_autostart_bots()
 
@@ -385,10 +395,15 @@ def web_status_info() -> dict:
 
 
 def marketplace_fetch(url=None) -> dict:
-    """Fetch + validate a curated bot registry (default: the project's own)."""
+    """Fetch + validate a bot registry.
+
+    Order of resolution: explicit ``url``, else the first saved custom
+    (community) source, else the project's curated default.
+    """
     from . import marketplace
 
-    return marketplace.fetch_registry(url)
+    resolved = marketplace.resolve_registry_url(_data_dir, url)
+    return marketplace.fetch_registry(resolved)
 
 
 def marketplace_install(url, overwrite: bool = False) -> dict:
@@ -396,6 +411,27 @@ def marketplace_install(url, overwrite: bool = False) -> dict:
     from . import marketplace
 
     return marketplace.install_entry(url, _ensure(), overwrite=overwrite)
+
+
+def registry_sources() -> list:
+    """Saved custom (community) registry URLs (oldest first)."""
+    from . import marketplace
+
+    return marketplace.load_registry_sources(_data_dir)
+
+
+def add_registry_source(url) -> dict:
+    """Validate + persist one custom registry URL."""
+    from . import marketplace
+
+    return marketplace.add_registry_source(_data_dir, url)
+
+
+def remove_registry_source(url) -> dict:
+    """Remove one saved custom registry URL."""
+    from . import marketplace
+
+    return marketplace.remove_registry_source(_data_dir, url)
 
 
 # --------------------------------------------------------------------- #

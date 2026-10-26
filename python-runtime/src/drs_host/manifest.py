@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 SPEC_VERSION = 1
 
@@ -35,11 +36,29 @@ ALLOWED_KEYS = {
     "auto_start",
     "schedule",
     "isolation",
+    "health",
 }
 ISOLATION_MODES = ("thread", "process")
 SCHEDULE_KINDS = ("interval", "daily")
 SCHEDULE_KEYS = {"kind", "interval_seconds", "run_seconds", "time", "duration_seconds", "enabled"}
 MAX_SCHEDULE_SECONDS = 366 * 24 * 3600
+HEALTH_KINDS = ("http", "command")
+HEALTH_KEYS = {
+    "kind",
+    "url",
+    "script",
+    "expect_status",
+    "interval_seconds",
+    "timeout_seconds",
+    "failure_threshold",
+    "success_threshold",
+    "recover",
+    "enabled",
+}
+HEALTH_RECOVER_ACTIONS = ("none", "restart", "force_stop")
+HEALTH_INTERVAL_RANGE = (5.0, 86400.0)
+HEALTH_TIMEOUT_RANGE = (1.0, 60.0)
+HEALTH_THRESHOLD_RANGE = (1, 100)
 RESTART_POLICIES = ("never", "on_failure", "always")
 RESTART_DEFAULTS = {
     "policy": "on_failure",
@@ -68,6 +87,7 @@ class BotManifest:
     restart: dict = field(default_factory=lambda: dict(RESTART_DEFAULTS))
     auto_start: bool = False
     schedule: Optional[dict] = None
+    health: Optional[dict] = None
     isolation: str = "thread"
     spec_version: int = SPEC_VERSION
 
@@ -187,6 +207,108 @@ def _validate_schedule(raw: Any, errors: list) -> Optional[dict]:
     return out
 
 
+def _validate_health(raw: Any, errors: list) -> Optional[dict]:
+    """Validate the optional ``health`` object (v1.6).
+
+    Two probe kinds:
+
+    - ``http``: GET ``url`` every ``interval_seconds``; success when the
+      response status equals ``expect_status`` (default 200).
+    - ``command``: import the bot-relative ``script`` (a ``.py`` file inside
+      the bot folder) and call its ``check()`` function — ``True``/``False``
+      or ``(ok, detail)``. No shell, no arbitrary argv.
+
+    After ``failure_threshold`` consecutive failures the monitor applies
+    ``recover`` (``none`` | ``restart`` | ``force_stop``); the bot is
+    healthy again after ``success_threshold`` consecutive successes.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        errors.append("health: must be an object")
+        return None
+    unknown = set(raw) - HEALTH_KEYS
+    if unknown:
+        errors.append("health: unknown key(s): " + ", ".join(sorted(unknown)))
+
+    out: dict = {"enabled": raw.get("enabled", True)}
+    if not isinstance(out["enabled"], bool):
+        errors.append("health.enabled: must be true or false")
+        out["enabled"] = True
+
+    kind = raw.get("kind")
+    if kind not in HEALTH_KINDS:
+        errors.append("health.kind: must be one of " + ", ".join(HEALTH_KINDS))
+        return None
+    out["kind"] = kind
+
+    if kind == "http":
+        url = raw.get("url")
+        if not isinstance(url, str) or not url.strip():
+            errors.append("health.url: required for kind 'http'")
+        else:
+            parts = urlsplit(url.strip())
+            if parts.scheme not in ("http", "https") or not parts.netloc:
+                errors.append("health.url: must be an http/https URL")
+            else:
+                out["url"] = url.strip()
+        expect = raw.get("expect_status", 200)
+        if isinstance(expect, bool) or not isinstance(expect, int) or not 100 <= expect <= 599:
+            errors.append("health.expect_status: must be an HTTP status code (100-599)")
+        else:
+            out["expect_status"] = expect
+    else:  # command
+        script = raw.get("script")
+        if not isinstance(script, str) or not script.strip():
+            errors.append("health.script: required for kind 'command'")
+        else:
+            normalized = script.strip().replace("\\", "/")
+            if (
+                not normalized.endswith(".py")
+                or normalized.startswith("/")
+                or ".." in normalized.split("/")
+            ):
+                errors.append(
+                    "health.script: must be a relative .py path inside the bot folder"
+                )
+            else:
+                out["script"] = normalized
+
+    def _number(key: str, lo: float, hi: float, default: float) -> float:
+        value = raw.get(key, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(f"health.{key}: must be a number between {lo:g} and {hi:g}")
+            return default
+        if not lo <= float(value) <= hi:
+            errors.append(f"health.{key}: must be between {lo:g} and {hi:g}")
+            return default
+        return float(value)
+
+    out["interval_seconds"] = _number("interval_seconds", *HEALTH_INTERVAL_RANGE, 30.0)
+    out["timeout_seconds"] = _number("timeout_seconds", *HEALTH_TIMEOUT_RANGE, 5.0)
+
+    for key in ("failure_threshold", "success_threshold"):
+        value = raw.get(key, 3 if key == "failure_threshold" else 1)
+        if isinstance(value, bool) or not isinstance(value, int) or not (
+            HEALTH_THRESHOLD_RANGE[0] <= value <= HEALTH_THRESHOLD_RANGE[1]
+        ):
+            errors.append(
+                f"health.{key}: must be an integer between "
+                f"{HEALTH_THRESHOLD_RANGE[0]} and {HEALTH_THRESHOLD_RANGE[1]}"
+            )
+        else:
+            out[key] = value
+
+    recover = raw.get("recover", "restart")
+    if recover not in HEALTH_RECOVER_ACTIONS:
+        errors.append(
+            "health.recover: must be one of " + ", ".join(HEALTH_RECOVER_ACTIONS)
+        )
+    else:
+        out["recover"] = recover
+    return out
+
+
 def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
     """Validate a parsed ``bot.json`` document.
 
@@ -265,6 +387,7 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
 
     restart = _validate_restart(data.get("restart"), errors)
     schedule = _validate_schedule(data.get("schedule"), errors)
+    health = _validate_health(data.get("health"), errors)
 
     isolation = data.get("isolation", "thread")
     if isolation not in ISOLATION_MODES:
@@ -290,6 +413,7 @@ def validate_manifest(data: Any) -> tuple[Optional[BotManifest], list]:
         restart=restart,
         auto_start=auto_start,
         schedule=schedule,
+        health=health,
         isolation=isolation,
         spec_version=spec_version,
     )

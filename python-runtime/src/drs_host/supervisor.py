@@ -29,6 +29,7 @@ from pathlib import Path
 from . import importer
 from . import installer
 from . import isolation as isolation_mod
+from .healthcheck import BotHealthMonitor, fresh_health_state
 from .logging import BotLogger, JsonlFileSink, RingBuffer
 from .manifest import BotManifest, validate_manifest, python_version_tuple
 from .runner import BotRunner
@@ -65,6 +66,9 @@ class SupervisedBot:
         self.cpu_seconds = 0.0
         self.last_cpu_seconds = None
         self.schedule_state = {"last_start": None, "next_start_at": None}
+        self.health_state = fresh_health_state(
+            float((manifest.health or {}).get("interval_seconds", 30.0))
+        )
         self.ring = RingBuffer()
         self.file_sink = JsonlFileSink(self.bot_dir / "logs" / "runtime.jsonl")
         self.logger = BotLogger(manifest.id, [self.ring, self.file_sink])
@@ -101,6 +105,8 @@ class SupervisedBot:
             "schedule_state": {
                 "next_start_at": self.schedule_state.get("next_start_at"),
             },
+            "health": self.manifest.health,
+            "health_state": dict(self.health_state),
             "last_error": self.last_error,
             "started_at": self.started_at,
             "stopped_at": self.stopped_at,
@@ -132,6 +138,7 @@ class Supervisor:
         self._requirements_checker = requirements_checker
         self.requirements_policy = "warn"
         self._scheduler = BotScheduler(self)
+        self._health_monitor = BotHealthMonitor(self)
 
     # -- introspection used by the scheduler ---------------------------
 
@@ -155,12 +162,17 @@ class Supervisor:
     # ------------------------------------------------------------------ #
 
     def start_scheduler(self) -> dict:
-        """Start the cron-like scheduler thread (interval/daily windows)."""
+        """Start the cron-like scheduler and the health monitor (v1.6)."""
         self._scheduler.start()
+        self._health_monitor.start()
         return {"ok": True}
 
     def scheduler_running(self) -> bool:
         thread = self._scheduler._thread
+        return thread is not None and thread.is_alive()
+
+    def health_monitor_running(self) -> bool:
+        thread = self._health_monitor._thread
         return thread is not None and thread.is_alive()
 
     def set_schedule_enabled(self, bot_id, enabled) -> dict:
@@ -191,6 +203,39 @@ class Supervisor:
             )
             bot.manifest = manifest
         return {"ok": True, "id": bot_id, "schedule": manifest.schedule}
+
+    def set_health_enabled(self, bot_id, enabled) -> dict:
+        """Enable/disable a bot's health checks (persists to bot.json)."""
+        if not isinstance(enabled, bool):
+            return {"ok": False, "errors": ["enabled must be true or false"]}
+        with self._lock:
+            bot = self._bots.get(bot_id)
+            if bot is None:
+                return {"ok": False, "errors": [f"unknown bot id: {bot_id}"]}
+            if bot.manifest.health is None:
+                return {
+                    "ok": False,
+                    "errors": [f"bot {bot_id} has no health config in its manifest"],
+                }
+            manifest_path = bot.bot_dir / "bot.json"
+            try:
+                document = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                return {"ok": False, "errors": [f"cannot read bot.json: {exc}"]}
+            document.setdefault("health", {})["enabled"] = enabled
+            manifest, errors = validate_manifest(document)
+            if manifest is None:
+                return {"ok": False, "errors": errors}
+            manifest_path.write_text(
+                json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            bot.manifest = manifest
+        return {"ok": True, "id": bot_id, "health": manifest.health}
+
+    def probe_health(self, bot_id) -> dict:
+        """Run one manual health probe now (diagnostic; no auto-recovery)."""
+        return self._health_monitor.probe_once(bot_id)
 
     # ------------------------------------------------------------------ #
     # Installation                                                       #
@@ -463,6 +508,9 @@ class Supervisor:
 
     def _launch(self, bot: SupervisedBot) -> None:
         """Spawn a fresh run of ``bot``; caller must hold the lock."""
+        prior_recoveries = 0
+        if isinstance(bot.health_state, dict):
+            prior_recoveries = int(bot.health_state.get("recoveries", 0) or 0)
         bot.stop_requested = False
         bot.detached = False
         bot.stop_event = threading.Event()
@@ -478,6 +526,12 @@ class Supervisor:
         bot.stopped_at = None
         bot.last_error = None
         bot.run_count += 1
+        bot.health_state = fresh_health_state(
+            float((bot.manifest.health or {}).get("interval_seconds", 30.0))
+        )
+        # ``recoveries`` is cumulative for the bot's lifetime, not per-run.
+        bot.health_state["recoveries"] = prior_recoveries
+        self._health_monitor.reset_bot(bot.manifest.id)
         site_dir = installer.site_dir_for_run(bot.bot_dir, self.bots_root.parent, bot.manifest.id)
         runner = self._build_runner(bot, site_dir)
         bot.thread = runner
@@ -637,6 +691,7 @@ class Supervisor:
         return {"ok": True, "id": bot_id}
 
     def shutdown_all(self) -> dict:
+        self._health_monitor.shutdown()
         self._scheduler.shutdown()
         with self._lock:
             running = [
