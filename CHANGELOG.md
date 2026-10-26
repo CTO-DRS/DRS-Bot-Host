@@ -1,3 +1,55 @@
+## [1.6.0] — 2026-10-26
+
+Per-bot health checks with auto-recovery + custom (community) registry
+sources — the two verifiable items from the post-1.5 roadmap (standalone
+Python binaries stay honestly future work). 168/168 pytest locally.
+
+### Added — Python runtime core (verified locally, 168/168 pytest)
+- **Health checks** (`drs_host.healthcheck`): a `health` object in
+  `bot.json` — `kind: "http"` (GET, `expect_status`) or `kind: "command"`
+  (bot-relative `.py` script exposing `check()` → bool | (bool, detail);
+  in-process, no shell/argv, Chaquopy-safe). Strict validation: kinds,
+  ranges (interval 5–86400 s, timeout 1–60 s, thresholds 1–100), recover
+  actions (`none | restart | force_stop`), script path traversal refused,
+  unknown keys rejected. `BotHealthMonitor` is a 1 Hz daemon thread
+  mirroring the scheduler: probes RUNNING (non-detached) bots only,
+  one probe thread per bot at a time, real-clock timeout accounting
+  (a hung `check()` is recorded once as a timeout failure), recovery
+  escalation, cumulative `recoveries` counter, `probe_health()` manual
+  diagnostic (never auto-recovers), `set_health_enabled()` persisted to
+  `bot.json`, and full `health` + `health_state` in every status payload.
+- **Custom registry sources** (`drs_host.marketplace`): validated,
+  deduped, persisted (max 20) http(s) registry URLs in
+  `<data_dir>/registry_sources.json`; `resolve_registry_url()` — explicit
+  → first saved → curated default — wired into `marketplace_fetch()`.
+- **CLI**: `health [bot] [--on|--off]`, `health-probe [bot]`,
+  `registry-add` / `registry-remove` / `registry-list`.
+- 43 new tests: manifest validation matrix, probe primitives against a
+  real local HTTP server (200 / mismatch / 404 / refused), command-probe
+  tuple/raise/missing-`check()`/bad-return/missing-file, threshold and
+  streak semantics, idle/disabled states, auto-recovery via a real
+  supervised restart, counter reset with recovery preservation, real
+  deadline timeout accounting, enable persistence, manual probe API,
+  registry round-trip/cap/parse-survival, and a live custom-registry
+  fetch through `host_api.marketplace_fetch()`.
+
+### Added — Android app (verified by CI build + JVM tests)
+- **Health card** (bot detail): probe kind + target, live status colouring
+  (healthy mint / unhealthy red), failures + recoveries counters, last
+  probe error, **Probe now** button with busy state, and an enable switch
+  persisting to `bot.json`. New tolerant parsers: `HealthConfig`,
+  `HealthState`, `HealthProbeResult`.
+- **Registry sources editor** (Market tab): monospace URL field, Save /
+  Use / Remove per saved source, "Default registry" reset, inline
+  host-side rejection text; fetch-without-source honours the first saved
+  source. New `OutlinedNeonButton` component.
+- Strings EN + AR; versionCode 7 / versionName 1.6.0.
+
+### Docs
+- README: v1.6.0 badge + APK link, features, verification row 168/168,
+  "What shipped in v1.6", roadmap updated (registry *editor* remains).
+- BOT_SPEC: `health` manifest row + full Arabic v1.6 section.
+
 ## [1.5.0] — 2026-10-26
 
 Closing the "modern tech look + more features" request: log search/filter

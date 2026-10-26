@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.5.0-blue)
+![version](https://img.shields.io/badge/version-1.6.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.5.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.5.0/DRS-Bot-Host-v1.5.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.6.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.6.0/DRS-Bot-Host-v1.6.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -49,6 +49,15 @@ DRS Bot Host turns an Android phone into a small bot server:
 - **Dark futuristic glass UI** (Kotlin + Jetpack Compose) with an animated
   engineering-grid backdrop, neon orbs and a scanline sweep, plus a
   **branded splash screen** (neon sweep ring, crossfades into the app).
+- **Per-bot health checks with auto-recovery** (v1.6): declare an HTTP probe
+  (or a bot-relative `check()` script) and the host watches every running
+  bot on an interval — consecutive failures escalate to a graceful
+  restart, a force-stop + restart, or just a flagged state; a "Probe now"
+  button and an enable switch live in the bot detail screen.
+- **Custom (community) registries** (v1.6): point the Market tab at your
+  own registry JSON (a gist, a LAN server, anywhere http/https) — sources
+  are validated, persisted and one tap away; a fetch without an explicit
+  source uses the first saved one.
 - **No server, no fees**: the embedded CPython 3.12 runtime (Chaquopy 17.1.0,
   MIT) runs everything on-device.
 
@@ -56,7 +65,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, downloader, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **125/125 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, healthcheck, downloader, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **168/168 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -145,12 +154,42 @@ Bot contract: **docs/BOT_SPEC.md**.
   (`serve-status --cert/--key` or the API).
 - Fixed: the Import screen rendered the skill-templates card twice.
 
-## Roadmap (post-1.5)
+## What shipped in v1.6
+
+- **Per-bot health checks** (`drs_host.healthcheck`): declare a `health`
+  object in `bot.json` — an `http` probe (GET, expected status) or a
+  `command` probe (a bot-relative `.py` script whose `check()` returns a
+  bool or `(bool, detail)`; runs in-process, no shell, no argv). A
+  1 Hz monitor thread probes every RUNNING bot on its interval with
+  per-probe timeout accounting; `failure_threshold` consecutive failures
+  trigger `recover`: `restart` (graceful), `force_stop` (detach + start),
+  or `none` (stay flagged unhealthy). `success_threshold` consecutive
+  successes mark the bot healthy again; the recovery counter survives
+  restarts. Runtime state (`health_state`) ships in every status payload.
+- **Manual probes + persistence**: `host_api.probe_health()` (diagnostic,
+  never auto-recovers), `set_health_enabled()` persisted to `bot.json`,
+  CLI `health` / `health --on|--off` / `health-probe`, and a bot-detail
+  health card (probe target, live status colouring, failures/recoveries,
+  last error, Probe-now button, enable switch).
+- **Custom (community) registry sources** (`drs_host.marketplace`):
+  `add_registry_source` / `remove_registry_source` / `registry_sources`
+  persist an ordered list of http(s) registry URLs in the host data dir
+  (max 20, deduped, strictly shape-checked). `marketplace_fetch()` without
+  an explicit URL resolves: explicit → first saved source → the project's
+  curated default. The Market tab gained a sources editor (add / use /
+  remove) with a monospace URL field and inline host-side rejection text.
+- Verified locally: **168/168 pytest** (43 new v1.6 tests: validation
+  matrix, real HTTP probes against a local server, probe tuples/raises/
+  missing-`check()`, timeout accounting with a real deadline, idle/
+  disabled semantics, recovery via a real supervised restart, registry
+  source round-trip + a live custom-registry fetch) + real-CLI smoke.
+
+## Roadmap (post-1.6)
 
 - Termux-style standalone Python binaries for on-device process isolation
   (needs ~30 MB of bundled runtime per ABI — deliberately not faked).
-- In-app marketplace registry editor / community registries.
-- Per-bot health checks (HTTP probe / custom command) with auto-recovery.
+- In-app registry editor for authoring registries on-device (the v1.6
+  sources feature covers consuming community registries).
 
 <div dir="rtl">
 

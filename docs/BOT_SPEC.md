@@ -38,6 +38,7 @@ my-bot/
 | `restart` | object | لا | انظر أدناه | سياسة إعادة التشغيل |
 | `auto_start` | bool | لا | `false` | يبدأ تلقائيًا مع خدمة الاستضافة إن سمح الإعداد |
 | `schedule` | object | لا | `null` | جدولة تشغيل تشبه cron (انظر أدناه — جديدة في v1.2) |
+| `health` | object | لا | `null` | فحوص صحة دورية مع استرجاع تلقائي (انظر أدناه — جديد في v1.6) |
 | `isolation` | string | لا | `"thread"` | نمط العزل: `"thread"` (افتراضي) أو `"process"` — عملية بايثون منفصلة مع إيقاف قسري حقيقي (جديد في v1.3؛ على الأندرويد داخل Chaquopy يعود للخيوط تلقائيًا) |
 | `spec_version` | int | لا | `1` | إصدار المواصفة — يجب أن يكون 1 |
 
@@ -83,6 +84,43 @@ my-bot/
   `host_api.set_schedule_enabled(bot_id, true|false)` — ويُحفظ في `bot.json`.
 - حالة `RUNNING` داخل نافذة تظهر "النافذة التالية" في الواجهة.
 - مفاتيح غير معروفة أو قيم خارج المدى **ترفض** بصرامة مثل باقي البيان.
+
+**health** (جديد في v1.6) — فحوص صحة دورية أثناء عمل البوت مع استرجاع تلقائي:
+
+```json
+{
+  "kind": "http",               // http | command
+  "url": "http://127.0.0.1:8080/health",  // إلزامي لـ http
+  "expect_status": 200,         // اختياري: رمز HTTP المقبول (افتراضي 200)
+  "interval_seconds": 30,       // 5–86400 (افتراضي 30)
+  "timeout_seconds": 5,         // 1–60 (افتراضي 5)
+  "failure_threshold": 3,       // 1–100 إخفاق متتالي ⇒ غير سليم
+  "success_threshold": 1,       // 1–100 نجاح متتالٍ ⇒ سليم مجددًا
+  "recover": "restart",         // none | restart | force_stop
+  "enabled": true
+}
+```
+
+```json
+{
+  "kind": "command",
+  "script": "health.py",        // إلزامي لـ command: مسار نسبي لملف .py داخل مجلد البوت
+  "recover": "force_stop"
+}
+```
+
+- **http**: طلب GET دوري؛ النجاح عندما يساوي رمز الاستجابة `expect_status`.
+- **command**: استيراد السكربت واستدعاء `check()` — تُعيد `True`/`False`
+  أو `(bool, detail)`. يعمل داخل نفس المفسّر (متوافق مع Chaquopy)؛ لا
+  shell ولا أوامر عشوائية. `check()` التي لا تنتهي تُحسب "مهلة انتهت"
+  بعد `timeout_seconds`.
+- تُفحص فقط البوتات في حالة `RUNNING` (وغير المفصولة).
+- بعد بلوغ `failure_threshold` يُطبّق `recover`: إعادة تشغيل رشيقة، أو
+  `force_stop` ثم بدء جديد، أو لا شيء (يبقى البوت موسومًا "غير سليم").
+- يدويًا: `host_api.probe_health(bot_id)` (تشخيص بلا استرجاع)،
+  `set_health_enabled(bot_id, true|false)` (يُحفظ في `bot.json`)،
+  أو أمر CLI `health` / `health-probe`.
+- مفاتيح غير معروفة أو قيم خارج المدى **ترفض** بصرامة.
 
 المفاتيح غير المعروفة **ترفض** بصرامة (حماية من الأخطاء المطبعية).
 
