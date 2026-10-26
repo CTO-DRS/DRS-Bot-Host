@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.7.0-blue)
+![version](https://img.shields.io/badge/version-1.8.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.7.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.7.0/DRS-Bot-Host-v1.7.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.8.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.8.0/DRS-Bot-Host-v1.8.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -23,6 +23,12 @@
 DRS Bot Host turns an Android phone into a small bot server:
 
 - **Import bots** as a ZIP archive or a project folder (SAF picker).
+- **GitHub scanner**: paste a GitHub link — repo, `/tree/BRANCH` (with
+  subfolders), `/blob/…​.zip`, release asset — or any direct `.zip`/`.ibot`
+  URL. One download is scanned and **every bot inside is auto-detected**
+  (multi-bot repos included) with strict manifest validation, entrypoint
+  and requirements reporting; import any selection in one tap. Packaged
+  `.zip`/`.ibot` files inside repos are import candidates too.
 - **Host them continuously** via a `specialUse` foreground service with an
   optional boot autostart and partial wake lock.
 - **Restart policies** per bot (`never` / `on_failure` / `always`) with
@@ -72,7 +78,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, healthcheck, downloader, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **168/168 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, healthcheck, downloader, ghscan, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **209/209 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -191,7 +197,38 @@ Bot contract: **docs/BOT_SPEC.md**.
   disabled semantics, recovery via a real supervised restart, registry
   source round-trip + a live custom-registry fetch) + real-CLI smoke.
 
-## Roadmap (post-1.6)
+## What shipped in v1.8
+
+- **GitHub link scanner** (`drs_host.ghscan`): `parse_github_url()`
+  understands repo, `/tree/<ref>[/sub/dir]` (slashed branch/tag names are
+  resolved by probing codeload — injectable for tests), `/blob/<ref>/…​.zip`
+  (rewritten to raw), release assets, `releases/latest` (resolved via the
+  API), `archive/*.zip`, raw/codeload links and any direct `.zip`/`.ibot`
+  URL; everything else is honestly rejected.
+- **One download, full scan**: `fetch_for_scan()` streams the archive once
+  under the standard size cap; `scan_zip_for_bots()` finds EVERY
+  `bot.json` (multi-bot repos), validates each manifest with the strict
+  importer rules, reports entrypoint presence, requirements, file counts
+  and sizes, and lists packaged `.zip`/`.ibot` members. No GitHub API
+  quota is consumed by the scan itself.
+- **Selective import**: `import_bot_from_zip_subtree()` extracts only the
+  chosen bot's files and re-runs the full hardened pipeline (zip-slip,
+  extension allowlist, entrypoint, overwrite semantics);
+  `import_zip_member()` imports packaged `.zip`/`.ibot` members. The scan
+  archive is cached (`ghscan-latest.zip`, sha256-checked) so importing
+  the selection never re-downloads.
+- **App + CLI**: `github_scan()` / `github_import_selected()` host API
+  (partial failures reported per item), a scanner card on the Import
+  screen (scan → auto-detected list with checkboxes, single-bot
+  pre-selection, requirements chips, honest errors) and
+  `gh-scan` / `gh-import [--path …|--all]` CLI commands. Strings EN+AR.
+- Verified locally: **209/209 pytest** (41 new v1.8 tests: URL parser
+  matrix with stubbed probes, real-HTTP fetch, multi-bot scan, subtree
+  and member imports, traversal/size/type refusals, host-API flow with
+  the server killed between scan and import to prove cache reuse) + a
+  real CLI smoke (scan → import --all → list).
+
+## Roadmap (post-1.8)
 
 - Termux-style standalone Python binaries for on-device process isolation
   (needs ~30 MB of bundled runtime per ABI — deliberately not faked).

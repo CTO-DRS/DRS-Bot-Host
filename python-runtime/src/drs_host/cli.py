@@ -83,6 +83,24 @@ def main(argv=None) -> int:
     cmd_url.add_argument("url")
     cmd_url.add_argument("--overwrite", action="store_true")
 
+    sub.add_parser(
+        "gh-scan", help="scan a GitHub link and auto-detect every bot inside"
+    ).add_argument("url")
+
+    cmd_gh_import = sub.add_parser(
+        "gh-import",
+        help="import selected bots from a scanned GitHub archive",
+    )
+    cmd_gh_import.add_argument("url")
+    cmd_gh_import.add_argument(
+        "--path", action="append", default=[],
+        help="archive-relative bot dir or .zip/.ibot member (repeatable)",
+    )
+    cmd_gh_import.add_argument(
+        "--all", action="store_true", help="import every detected bot"
+    )
+    cmd_gh_import.add_argument("--overwrite", action="store_true")
+
     cmd_policy = sub.add_parser(
         "requirements-policy", help="show/set the requirements policy (off/warn/enforce)"
     )
@@ -186,6 +204,30 @@ def main(argv=None) -> int:
 
     if args.command == "import-url":
         result = host_api.import_bot_url(args.url, overwrite=args.overwrite)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "gh-scan":
+        result = host_api.github_scan(args.url)
+        _print_json(result)
+        return 0 if result.get("ok") else 2
+
+    if args.command == "gh-import":
+        if args.all:
+            scan = host_api.github_scan(args.url)
+            if not scan.get("ok"):
+                _print_json(scan)
+                return 2
+            paths = [b["dir"] for b in scan.get("bots", []) if b.get("valid")]
+            if not paths:
+                _print_json({"ok": False, "errors": [scan.get("hint") or "no valid bots detected"]})
+                return 2
+        else:
+            paths = list(args.path)
+        if not paths:
+            _print_json({"ok": False, "errors": ["nothing selected — pass --path or --all"]})
+            return 2
+        result = host_api.github_import_selected(args.url, paths, overwrite=args.overwrite)
         _print_json(result)
         return 0 if result.get("ok") else 2
 

@@ -327,6 +327,47 @@ class BotRepository {
         ImportResult.fromJson(obj)
     }
 
+    // ── v1.8 GitHub scanner ────────────────────────────────────────────────
+
+    /**
+     * Scan a pasted GitHub (or direct .zip/.ibot) link: one download, every
+     * bot.json inside validated with the strict importer rules, packaged
+     * .zip/.ibot members listed. Scan errors (404, too large, no bots) come
+     * back as failed Results carrying the host-side reason.
+     */
+    suspend fun githubScan(context: Context, url: String): Result<GhScanResult> =
+        call(context) { api ->
+            val obj = JSONObject(
+                PyBridge.dumps(api.callAttr("github_scan", url)),
+            )
+            if (!obj.optBoolean("ok", false)) {
+                throw IllegalStateException(obj.errorsMessage())
+            }
+            GhScanResult.fromJson(obj)
+        }
+
+    /**
+     * Import the selected bot directories / packaged members from the last
+     * scan (the archive stays cached on the host — no re-download).
+     * Partial failures are a SUCCESS Result: inspect [GhImportResult].
+     */
+    suspend fun githubImportSelected(
+        context: Context,
+        url: String,
+        paths: List<String>,
+        overwrite: Boolean = false,
+    ): Result<GhImportResult> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(
+                api.callAttr("github_import_selected", url, JSONArray(paths).toString(), overwrite),
+            ),
+        )
+        if (!obj.has("results") && !obj.optBoolean("ok", false)) {
+            throw IllegalStateException(obj.errorsMessage())
+        }
+        GhImportResult.fromJson(obj)
+    }
+
     // ── plumbing ────────────────────────────────────────────────────────────
 
     private suspend fun <T> call(

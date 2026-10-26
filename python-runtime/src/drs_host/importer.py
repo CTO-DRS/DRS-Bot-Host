@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -344,3 +345,157 @@ def peek_folder(folder) -> tuple:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         return None, [f"bot.json is not valid JSON: {exc}"]
     return validate_manifest(data)
+
+
+# --------------------------------------------------------------------- #
+# v1.8: GitHub scanner import paths                                      #
+# --------------------------------------------------------------------- #
+
+def _subdir_ok(subdir: str) -> bool:
+    """A scan-selected subdirectory must be clean and relative."""
+    if not subdir:
+        return False
+    if subdir.startswith("/") or "\\" in subdir:
+        return False
+    parts = PurePosixPath(subdir).parts
+    if any(part in ("", ".", "..") for part in parts):
+        return False
+    if ":" in subdir.split("/", 1)[0]:
+        return False
+    return True
+
+
+def import_bot_from_zip_subtree(
+    zip_path,
+    subdir,
+    bots_root,
+    *,
+    overwrite: bool = False,
+    limits=None,
+) -> dict:
+    """Import the bot living at ``subdir`` inside a downloaded archive.
+
+    Used by the v1.8 GitHub scanner for multi-bot repos. Only members
+    under ``subdir`` are extracted, into a temp folder, and then imported
+    through :func:`import_folder` so EVERY hardened check re-runs
+    (manifest validation, extension allowlist, entrypoint, size limits,
+    overwrite semantics). Never trusts the caller's ``subdir``.
+    """
+    limits = _limits_overlay(limits)
+    zpath = Path(zip_path)
+    if not zpath.is_file():
+        return {"ok": False, "errors": [f"archive not found: {zpath}"]}
+    subdir = str(subdir or "").strip().strip("/")
+    if not _subdir_ok(subdir):
+        return {"ok": False, "errors": [f"unsafe bot path: {subdir!r}"]}
+
+    try:
+        with zipfile.ZipFile(zpath) as archive:
+            infos = [i for i in archive.infolist() if not i.is_dir()]
+            names = [i.filename for i in infos]
+            unsafe = [n for n in names if not _member_ok(n)]
+            if unsafe:
+                return {
+                    "ok": False,
+                    "errors": ["unsafe path(s) in archive: " + ", ".join(unsafe[:5])],
+                }
+            _, mapping = _strip_root(names)
+            members = {
+                info: mapping[info.filename]
+                for info in infos
+                if mapping[info.filename] == subdir
+                or mapping[info.filename].startswith(subdir + "/")
+            }
+            if not any(rel == f"{subdir}/bot.json" for rel in members.values()):
+                available = sorted({
+                    str(PurePosixPath(mapping[i.filename]).parent)
+                    for i in infos
+                    if mapping[i.filename].endswith("/bot.json")
+                })
+                hint = f" available bot dir(s): {', '.join(available) or 'none'}"
+                return {"ok": False, "errors": [f"no bot at {subdir}/bot.json." + hint]}
+
+            file_count = len(members)
+            if file_count > limits["max_files"]:
+                return {"ok": False, "errors": [
+                    f"too many files: {file_count} (max {limits['max_files']})"
+                ]}
+            total = sum(i.file_size for i in members)
+            if total > limits["max_total_bytes"]:
+                return {"ok": False, "errors": [
+                    f"decompressed size too large: {total} bytes "
+                    f"(max {limits['max_total_bytes']})"
+                ]}
+
+            with tempfile.TemporaryDirectory(prefix="ghscan-") as tmp:
+                stage = Path(tmp) / "bot"
+                stage.mkdir(parents=True)
+                stage_real = str(stage.resolve())
+                for info, rel in members.items():
+                    rel_under = rel[len(subdir):].lstrip("/")
+                    if not rel_under:
+                        continue
+                    target = stage / rel_under
+                    resolved = str(target.resolve())
+                    if not (resolved == stage_real
+                            or resolved.startswith(stage_real + os.sep)):
+                        return {"ok": False, "errors": [f"unsafe resolved path: {rel}"]}
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.open(info) as src, open(target, "wb") as out:
+                        shutil.copyfileobj(src, out)
+                return import_folder(stage, bots_root, overwrite=overwrite, limits=limits)
+    except zipfile.BadZipFile:
+        return {"ok": False, "errors": ["not a valid zip archive"]}
+
+
+def import_zip_member(
+    zip_path,
+    member,
+    bots_root,
+    *,
+    overwrite: bool = False,
+    limits=None,
+) -> dict:
+    """Extract one packaged ``*.zip`` / ``*.ibot`` entry and import it as a bot.
+
+    The member itself is size-capped, written to a temp file and handed to
+    the full :func:`import_zip` pipeline.
+    """
+    limits = _limits_overlay(limits)
+    zpath = Path(zip_path)
+    if not zpath.is_file():
+        return {"ok": False, "errors": [f"archive not found: {zpath}"]}
+    member = str(member or "").strip().strip("/")
+    if not member.lower().endswith((".zip", ".ibot")):
+        return {"ok": False, "errors": [f"not a packaged bot file (.zip/.ibot): {member}"]}
+    if not _subdir_ok(member):
+        return {"ok": False, "errors": [f"unsafe archive path: {member!r}"]}
+
+    try:
+        with zipfile.ZipFile(zpath) as archive:
+            infos = [i for i in archive.infolist() if not i.is_dir()]
+            unsafe = [i.filename for i in infos if not _member_ok(i.filename)]
+            if unsafe:
+                return {
+                    "ok": False,
+                    "errors": ["unsafe path(s) in archive: " + ", ".join(unsafe[:5])],
+                }
+            _, mapping = _strip_root([i.filename for i in infos])
+            match = next(
+                (i for i in infos if mapping.get(i.filename) == member),
+                None,
+            )
+            if match is None:
+                return {"ok": False, "errors": [f"member not found in archive: {member}"]}
+            if match.file_size > limits["max_zip_bytes"]:
+                return {"ok": False, "errors": [
+                    f"packaged file too large: {match.file_size} bytes "
+                    f"(max {limits['max_zip_bytes']})"
+                ]}
+            with tempfile.TemporaryDirectory(prefix="ghscan-") as tmp:
+                inner = Path(tmp) / PurePosixPath(member).name
+                with archive.open(match) as src, open(inner, "wb") as out:
+                    shutil.copyfileobj(src, out)
+                return import_zip(inner, bots_root, overwrite=overwrite, limits=limits)
+    except zipfile.BadZipFile:
+        return {"ok": False, "errors": ["not a valid zip archive"]}

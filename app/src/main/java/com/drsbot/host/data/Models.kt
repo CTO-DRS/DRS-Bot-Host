@@ -469,8 +469,138 @@ data class RuntimeInfo(
     }
 }
 
-// ── small org.json helpers shared by the parsers above ──────────────────────
+// ── v1.8 GitHub scanner models ──────────────────────────────────────────────
 
+/** One auto-detected bot inside a scanned GitHub archive. */
+data class GhDetectedBot(
+    val dir: String,
+    val id: String?,
+    val name: String?,
+    val description: String?,
+    val entrypoint: String?,
+    val entryOk: Boolean,
+    val valid: Boolean,
+    val requirements: List<String>,
+    val files: Int,
+    val bytes: Long,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): GhDetectedBot = GhDetectedBot(
+            dir = o.optString("dir"),
+            id = o.optString("id").takeIf { it.isNotBlank() },
+            name = o.optString("name").takeIf { it.isNotBlank() },
+            description = o.optString("description"),
+            entrypoint = o.optString("entrypoint").takeIf { it.isNotBlank() },
+            entryOk = o.optBoolean("entry_ok", false),
+            valid = o.optBoolean("valid", false),
+            requirements = o.optJSONArray("requirements").toStringList(),
+            files = o.optInt("files", 0),
+            bytes = o.optLong("bytes", 0),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** A packaged .zip / .ibot file found inside the scanned archive. */
+data class GhArchiveEntry(
+    val path: String,
+    val bytes: Long,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): GhArchiveEntry = GhArchiveEntry(
+            path = o.optString("path"),
+            bytes = o.optLong("bytes", 0),
+        )
+    }
+}
+
+/** Full scan result for a pasted GitHub / direct-zip link. */
+data class GhScanResult(
+    val ok: Boolean,
+    val summary: String,
+    val botCount: Int,
+    val archiveCount: Int,
+    val bots: List<GhDetectedBot>,
+    val archives: List<GhArchiveEntry>,
+    val hint: String?,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): GhScanResult {
+            val resolved = o.optJSONObject("resolved")
+            val bots = o.optJSONArray("bots")?.let { array ->
+                List(array.length()) { index ->
+                    GhDetectedBot.fromJson(array.optJSONObject(index) ?: JSONObject())
+                }
+            } ?: emptyList()
+            val archives = o.optJSONArray("archives")?.let { array ->
+                List(array.length()) { index ->
+                    GhArchiveEntry.fromJson(array.optJSONObject(index) ?: JSONObject())
+                }
+            } ?: emptyList()
+            return GhScanResult(
+                ok = o.optBoolean("ok", false),
+                summary = resolved?.optString("summary").orEmpty(),
+                botCount = o.optInt("bot_count", bots.size),
+                archiveCount = o.optInt("archive_count", archives.size),
+                bots = bots,
+                archives = archives,
+                hint = o.optString("hint").takeIf { it.isNotBlank() },
+                errors = o.optJSONArray("errors").toStringList(),
+            )
+        }
+    }
+}
+
+/** Per-selected-path import outcome (multi-import, partial failures allowed). */
+data class GhImportItem(
+    val path: String,
+    val ok: Boolean,
+    val botId: String?,
+    val files: Int,
+    val bytes: Long,
+    val errors: List<String>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): GhImportItem = GhImportItem(
+            path = o.optString("path"),
+            ok = o.optBoolean("ok", false),
+            botId = o.optString("bot_id").takeIf { it.isNotBlank() },
+            files = o.optInt("files", 0),
+            bytes = o.optLong("bytes", 0),
+            errors = o.optJSONArray("errors").toStringList(),
+        )
+    }
+}
+
+/** Aggregated multi-import result from github_import_selected(). */
+data class GhImportResult(
+    val ok: Boolean,
+    val imported: Int,
+    val failed: Int,
+    val botIds: List<String>,
+    val results: List<GhImportItem>,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): GhImportResult {
+            val results = o.optJSONArray("results")?.let { array ->
+                List(array.length()) { index ->
+                    GhImportItem.fromJson(array.optJSONObject(index) ?: JSONObject())
+                }
+            } ?: emptyList()
+            return GhImportResult(
+                ok = o.optBoolean("ok", false),
+                imported = o.optInt("imported", 0),
+                failed = o.optInt("failed", 0),
+                botIds = o.optJSONArray("bot_ids").toStringList(),
+                results = results,
+            )
+        }
+    }
+}
+
+// ── small org.json helpers shared by the parsers above ──────────────────────
 internal fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()
     return List(length()) { index -> optString(index) }.filter { it.isNotBlank() }

@@ -183,6 +183,175 @@ def import_bot_url(url, overwrite: bool = False) -> dict:
     return downloader.import_url(url, _ensure(), overwrite=overwrite)
 
 
+# --------------------------------------------------------------------- #
+# v1.8: GitHub scanner — paste a link, auto-detect every bot inside      #
+# --------------------------------------------------------------------- #
+
+_GH_CACHE_NAME = "ghscan-latest.zip"
+_GH_META_NAME = "ghscan-meta.json"
+
+
+def _gh_cache_paths() -> tuple:
+    downloads = _ensure().bots_root.parent / "downloads"
+    return downloads / _GH_CACHE_NAME, downloads / _GH_META_NAME
+
+
+def _gh_fetch_and_cache(url) -> dict:
+    """Download the archive once and cache it for the import step."""
+    import hashlib
+    import json
+    import shutil as _shutil
+
+    from . import ghscan
+
+    supervisor = _ensure()
+    limits = supervisor.limits_overlay()
+    downloads = supervisor.bots_root.parent / "downloads"
+    fetched = ghscan.fetch_for_scan(url, downloads, max_bytes=limits["max_zip_bytes"])
+    if not fetched.get("ok"):
+        return fetched
+    cache, meta_path = _gh_cache_paths()
+    try:
+        _shutil.copyfile(fetched["path"], cache)
+        meta_path.write_text(
+            json.dumps({
+                "url": str(url).strip(),
+                "sha256": hashlib.sha256(cache.read_bytes()).hexdigest(),
+                "resolved": fetched.get("resolved", {}),
+            }),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        return {"ok": False, "errors": [f"could not cache the scan archive: {exc}"]}
+    finally:
+        Path(fetched["path"]).unlink(missing_ok=True)
+    return fetched
+
+
+def _gh_cached_for(url) -> str | None:
+    """Return the cached archive path when it belongs to this exact URL."""
+    import hashlib
+    import json
+
+    cache, meta_path = _gh_cache_paths()
+    if not cache.is_file() or not meta_path.is_file():
+        return None
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if str(meta.get("url", "")).strip() != str(url).strip():
+        return None
+    try:
+        digest = hashlib.sha256(cache.read_bytes()).hexdigest()
+    except OSError:
+        return None
+    return str(cache) if digest == meta.get("sha256") else None
+
+
+def github_scan(url) -> dict:
+    """Scan a pasted GitHub (or direct .zip/.ibot) link for bots.
+
+    Downloads the archive once (hard size cap), finds EVERY ``bot.json``
+    (multi-bot repos), validates each manifest with the strict importer
+    rules and lists nested ``.zip``/``.ibot`` packages. The archive is
+    cached so ``github_import_selected`` does not re-download.
+    """
+    from . import ghscan
+
+    supervisor = _ensure()
+    limits = supervisor.limits_overlay()
+    fetched = _gh_fetch_and_cache(url)
+    if not fetched.get("ok"):
+        return fetched
+    cache, _ = _gh_cache_paths()
+    scan = ghscan.scan_zip_for_bots(
+        cache,
+        (fetched.get("resolved") or {}).get("subpath"),
+        limits=limits,
+    )
+    if not scan.get("ok"):
+        return scan
+    scan["resolved"] = fetched.get("resolved", {})
+    return scan
+
+
+def github_import_selected(url, subdirs, overwrite: bool = False) -> dict:
+    """Import the selected bots from a previously scanned archive.
+
+    ``subdirs`` may be a Python list or a JSON string of archive-relative
+    bot directories (``""`` for a root bot) and/or packaged
+    ``.zip``/``.ibot`` members. The cached scan archive is reused when it
+    still matches the URL; otherwise it is downloaded again.
+    """
+    import json as _json
+
+    from . import ghscan
+    from .importer import import_bot_from_zip_subtree, import_zip_member
+
+    if isinstance(subdirs, str):
+        try:
+            subdirs = _json.loads(subdirs)
+        except ValueError:
+            return {"ok": False, "errors": ["subdirs: not valid JSON"]}
+    if not isinstance(subdirs, list) or not subdirs or not all(
+        isinstance(item, str) for item in subdirs
+    ):
+        return {"ok": False, "errors": ["subdirs: must be a non-empty list of paths"]}
+
+    supervisor = _ensure()
+    limits = supervisor.limits_overlay()
+    archive = _gh_cached_for(url)
+    if archive is None:
+        fetched = _gh_fetch_and_cache(url)
+        if not fetched.get("ok"):
+            return fetched
+        archive, _ = _gh_cache_paths()
+        archive = str(archive)
+
+    scan = ghscan.scan_zip_for_bots(archive, limits=limits)
+    if not scan.get("ok"):
+        return scan
+    bot_dirs = {b["dir"] for b in scan.get("bots", [])}
+    archive_members = {a["path"] for a in scan.get("archives", [])}
+
+    results = []
+    for item in subdirs:
+        key = str(item).strip().strip("/")
+        if key in archive_members:
+            outcome = import_zip_member(
+                archive, key, supervisor.bots_root, overwrite=overwrite, limits=limits,
+            )
+        elif key == "" and "" in bot_dirs:
+            # Root-level bot: the whole archive IS the bot package.
+            from .importer import import_zip as _import_zip
+
+            outcome = _import_zip(archive, supervisor.bots_root, overwrite=overwrite,
+                                  limits=limits)
+        elif key in bot_dirs:
+            outcome = import_bot_from_zip_subtree(
+                archive, key, supervisor.bots_root, overwrite=overwrite, limits=limits,
+            )
+        else:
+            outcome = {
+                "ok": False,
+                "errors": [f"path not found in the scanned archive: {key!r}"],
+            }
+        if outcome.get("ok"):
+            outcome = supervisor.register_imported(outcome)
+        outcome["path"] = key
+        results.append(outcome)
+
+    imported = sum(1 for r in results if r.get("ok"))
+    return {
+        "ok": imported == len(results),
+        "results": results,
+        "imported": imported,
+        "failed": len(results) - imported,
+        "bot_ids": [r.get("bot_id") for r in results if r.get("ok")],
+    }
+
+
 def remove_bot(bot_id) -> dict:
     return _ensure().remove(bot_id)
 

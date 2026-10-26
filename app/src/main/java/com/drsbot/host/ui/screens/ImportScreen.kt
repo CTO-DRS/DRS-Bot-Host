@@ -45,6 +45,7 @@ fun ImportScreen(onImported: (String) -> Unit) {
     val vm: ImportViewModel = viewModel { ImportViewModel(appContext) }
     val state by vm.state.collectAsState()
     val overwrite by vm.overwrite.collectAsState()
+    val gh by vm.ghState.collectAsState()
 
     val zipPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -107,7 +108,7 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 }
             }
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
                 Text(
                     text = stringResource(R.string.import_url_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -129,11 +130,37 @@ fun ImportScreen(onImported: (String) -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
+                        onClick = { vm.scanGithub(url) },
+                        enabled = state !is ImportUiState.Working &&
+                            !gh.scanning && !gh.importing && url.isNotBlank(),
+                    ) {
+                        Text(stringResource(R.string.gh_scan_button))
+                    }
+                    OutlinedButton(
                         onClick = { vm.importUrl(url) },
-                        enabled = state !is ImportUiState.Working && url.isNotBlank(),
+                        enabled = state !is ImportUiState.Working &&
+                            !gh.scanning && !gh.importing && url.isNotBlank(),
                     ) {
                         Text(stringResource(R.string.import_url_button))
                     }
+                }
+
+                val scanResult = gh.scan
+                when {
+                    gh.scanning -> {
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = stringResource(R.string.gh_scanning),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    scanResult != null -> GhScanResults(
+                        gh = gh,
+                        enabled = state !is ImportUiState.Working && !gh.importing,
+                        onToggle = vm::toggleGhSelection,
+                        onImport = vm::importSelectedGh,
+                    )
+                    else -> Unit
                 }
             }
 
@@ -228,5 +255,138 @@ private fun SkillRow(
         Button(onClick = onCreate, enabled = enabled) {
             Text(stringResource(R.string.import_skills_create))
         }
+    }
+}
+
+// ── v1.8 GitHub scanner results ─────────────────────────────────────────────
+
+@Composable
+private fun GhScanResults(
+    gh: com.drsbot.host.vm.GhUiState,
+    enabled: Boolean,
+    onToggle: (String) -> Unit,
+    onImport: () -> Unit,
+) {
+    val scan = gh.scan ?: return
+    Spacer(Modifier.height(12.dp))
+    if (scan.summary.isNotBlank()) {
+        Text(
+            text = scan.summary,
+            style = MaterialTheme.typography.titleSmall,
+            color = NeonMint,
+        )
+    }
+    if (gh.importing) {
+        Text(
+            text = stringResource(R.string.gh_importing),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    if (scan.bots.isEmpty() && scan.archives.isEmpty()) {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = scan.hint ?: stringResource(R.string.gh_no_bots),
+            style = MaterialTheme.typography.bodySmall,
+            color = NeonAmber,
+        )
+        return
+    }
+    if (scan.bots.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.gh_detected_bots, scan.botCount),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        scan.bots.forEach { bot ->
+            val path = bot.dir.ifBlank { "." }
+            val filesLabel = stringResource(R.string.gh_files, bot.files)
+            val reqLabel = if (bot.requirements.isNotEmpty()) {
+                stringResource(R.string.gh_requirements, bot.requirements.joinToString(", "))
+            } else {
+                ""
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = path in gh.selected,
+                    onCheckedChange = { onToggle(path) },
+                    enabled = enabled && bot.valid,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = bot.name ?: bot.id ?: path,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = buildString {
+                            append(path)
+                            append(" · ")
+                            append(filesLabel)
+                            if (reqLabel.isNotBlank()) {
+                                append(" · ")
+                                append(reqLabel)
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!bot.valid) {
+                        Text(
+                            text = bot.errors.joinToString("; ")
+                                .ifBlank { stringResource(R.string.gh_invalid) },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NeonRed,
+                        )
+                    }
+                }
+            }
+        }
+    }
+    if (scan.archives.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.gh_archives, scan.archiveCount),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        scan.archives.forEach { archive ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = archive.path in gh.selected,
+                    onCheckedChange = { onToggle(archive.path) },
+                    enabled = enabled,
+                )
+                Text(
+                    text = "${archive.path} · ${archive.bytes} B",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+    gh.lastImport?.let { last ->
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.gh_import_result, last.imported, last.failed),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (last.failed == 0) NeonMint else NeonAmber,
+        )
+        last.results.filter { !it.ok }.forEach { item ->
+            Text(
+                text = "${item.path}: ${item.errors.joinToString("; ")}",
+                style = MaterialTheme.typography.bodySmall,
+                color = NeonRed,
+            )
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    Button(
+        onClick = onImport,
+        enabled = enabled && gh.selected.isNotEmpty(),
+    ) {
+        Text(stringResource(R.string.gh_import_selected, gh.selected.size))
     }
 }

@@ -1,3 +1,85 @@
+## [1.8.0] — 2026-10-26
+
+The GitHub import feature, done properly: paste a link, every bot inside
+is auto-detected, import exactly what you select.
+
+### Added — Python runtime core (verified locally, 209/209 pytest)
+- **Link scanner** (`drs_host.ghscan`): `parse_github_url()` — repo,
+  `/tree/<ref>[/sub/dir]` (slashed refs resolved by probing codeload,
+  injectable probe), `/blob/<ref>/<file>.zip|.ibot` (→ raw),
+  release assets, `releases/latest` (API-resolved, injectable),
+  `archive/*.zip`, raw/codeload, and any direct `.zip`/`.ibot` URL.
+  Traversal subpaths and unsupported shapes are refused with honest
+  errors. `.ibot` is the canonical bot-package extension (a zip with a
+  `bot.json` manifest).
+- **Single-download scan**: `fetch_for_scan()` + `scan_zip_for_bots()` —
+  every `bot.json` in the archive found and validated with the strict
+  importer rules (multi-bot repos), entrypoint presence, requirements,
+  sizes and file counts reported, packaged `.zip`/`.ibot` members listed,
+  empty archives explained with a hint.
+- **Selective import**: `importer.import_bot_from_zip_subtree()` (extract
+  only the chosen bot dir into a staged temp folder, then the FULL
+  hardened `import_folder` pipeline re-runs) and
+  `importer.import_zip_member()` (size-capped member extraction →
+  `import_zip`). Path arguments are re-validated (`..`, absolute,
+  backslashes, drive letters refused).
+- **Host API**: `github_scan(url)` (result cached: `ghscan-latest.zip` +
+  sha256-checked meta, so the import step never re-downloads) and
+  `github_import_selected(url, subdirs, overwrite)` — per-item results,
+  partial failures reported, bots registered with the supervisor on
+  success, JSON-string or list input for Chaquopy.
+- **CLI**: `gh-scan URL` and `gh-import URL [--path …]… [--all]
+  [--overwrite]` (verified end-to-end against a local HTTP server:
+  scan → import --all → list).
+- 41 new tests (`test_v18_features.py`): parser matrix with stubbed
+  probes/fetch_json, real-HTTP fetch, multi-bot/top-stripped scans,
+  invalid manifests, missing entrypoints, subpath filtering/traversal,
+  subtree imports (success/overwrite/unknown-dir hints/bad file types),
+  member imports (nested `.ibot`, not-found, size cap, non-archive),
+  host-API scan+import flow with the HTTP server shut down between scan
+  and import to PROVE the cache is reused, root-bot `""` selection, 404,
+  and input validation.
+
+### Added — Android app (verified by CI build + JVM tests)
+- **Scanner card** (Import screen): paste link → **Scan** (primary) or
+  the classic direct **Download & import**; results show the resolved
+  summary, auto-detected bots with checkboxes (single valid bot
+  pre-selected automatically), per-bot requirements + file counts,
+  invalid manifests in red, packaged files section, "Import selected (n)"
+  with a per-item outcome summary. Scan errors surface the host's real
+  reason (404, size cap, unsupported link).
+- New tolerant parsers: `GhDetectedBot`, `GhArchiveEntry`, `GhScanResult`,
+  `GhImportItem`, `GhImportResult`; repository `githubScan()` /
+  `githubImportSelected()`; strings EN + AR (171/171 parity);
+  versionCode 9 / versionName 1.8.0.
+
+## [1.7.0] — 2026-10-26
+
+In-app language switcher (System / English / العربية) and credential
+honesty: hosting bots never required tokens — now the UI says so.
+
+### Added — Android app (verified by CI build + JVM tests)
+- **In-app language switcher**: Settings → Appearance → Language with
+  System default / English / العربية chips, applied instantly via the
+  appcompat per-app locale delegate (`AppCompatDelegate.
+  setApplicationLocales()`). Arabic mirrors the whole layout RTL
+  (`supportsRtl` + full `values-ar` resources, 146/146 keys).
+- **Per-app language integration**: `android:localeConfig` +
+  `locales_config.xml` so Android 13+ keeps the system Settings → Apps →
+  Language picker in sync; on API < 33 appcompat persists the choice.
+- `MainActivity` is now an `AppCompatActivity` (required by the locale
+  delegate); the XML theme parent moved to `Theme.AppCompat.NoActionBar`.
+
+### Changed
+- **Token honesty**: skill-template note now states explicitly that most
+  skills need no tokens or API keys (only the optional Telegram template
+  and the optional status-page shared secret use credentials — hosting
+  plain Python bots requires none).
+
+### Docs
+- README: v1.7.0 badge + APK link, language-switcher feature, an explicit
+  "no tokens required" line in the feature list.
+
 ## [1.6.0] — 2026-10-26
 
 Per-bot health checks with auto-recovery + custom (community) registry
@@ -49,33 +131,6 @@ Python binaries stay honestly future work). 168/168 pytest locally.
 - README: v1.6.0 badge + APK link, features, verification row 168/168,
   "What shipped in v1.6", roadmap updated (registry *editor* remains).
 - BOT_SPEC: `health` manifest row + full Arabic v1.6 section.
-
-## [1.7.0] — 2026-10-26
-
-In-app language switcher (System / English / العربية) and credential
-honesty: hosting bots never required tokens — now the UI says so.
-
-### Added — Android app (verified by CI build + JVM tests)
-- **In-app language switcher**: Settings → Appearance → Language with
-  System default / English / العربية chips, applied instantly via the
-  appcompat per-app locale delegate (`AppCompatDelegate.
-  setApplicationLocales()`). Arabic mirrors the whole layout RTL
-  (`supportsRtl` + full `values-ar` resources, 146/146 keys).
-- **Per-app language integration**: `android:localeConfig` +
-  `locales_config.xml` so Android 13+ keeps the system Settings → Apps →
-  Language picker in sync; on API < 33 appcompat persists the choice.
-- `MainActivity` is now an `AppCompatActivity` (required by the locale
-  delegate); the XML theme parent moved to `Theme.AppCompat.NoActionBar`.
-
-### Changed
-- **Token honesty**: skill-template note now states explicitly that most
-  skills need no tokens or API keys (only the optional Telegram template
-  and the optional status-page shared secret use credentials — hosting
-  plain Python bots requires none).
-
-### Docs
-- README: v1.7.0 badge + APK link, language-switcher feature, an explicit
-  "no tokens required" line in the feature list.
 
 ## [1.5.0] — 2026-10-26
 

@@ -290,6 +290,15 @@ class Supervisor:
                 )
         return result
 
+    def register_imported(self, result: dict) -> dict:
+        """Register a bot installed through the raw importer functions.
+
+        Used by the v1.8 GitHub scanner paths (``import_bot_from_zip_subtree``
+        / ``import_zip_member``) which extract into ``bots_root`` directly
+        and then need the same registration as ``import_zip``.
+        """
+        return self._after_import(result)
+
     def discover_installed(self) -> int:
         """Re-register bots found on disk (used after an app restart)."""
         count = 0
