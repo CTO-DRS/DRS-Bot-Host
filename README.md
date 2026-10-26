@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.6.0-blue)
+![version](https://img.shields.io/badge/version-1.7.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.6.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.6.0/DRS-Bot-Host-v1.6.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.7.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.7.0/DRS-Bot-Host-v1.7.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
