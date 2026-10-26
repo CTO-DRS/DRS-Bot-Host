@@ -1,3 +1,52 @@
+## [1.9.0] — 2026-10-26
+
+The Wi-Fi status dashboard now speaks the user's language, and the
+curated registry grows by two bots.
+
+### Added — Python runtime core (verified locally, 223/223 pytest)
+- **Bilingual status page** (`drs_host.webstatus`): `FleetStatusServer`
+  accepts `language="ar"` and renders the dashboard right-to-left
+  (`lang="ar" dir="rtl"`) with fully translated tiles, table headers,
+  empty-fleet hint and footer; the default stays the exact English v1.3
+  page. `normalize_language()` maps any input (`ar`, `ara`, `arabic`,
+  `العربية`, unknown values) onto `en`/`ar` — old callers are untouched.
+  The JSON API is unchanged by the page language, and `web_status_info()`
+  now reports the active `language`.
+- **Host API**: `web_status_start(port, token, certfile, keyfile,
+  language)` — `language` is a positional fifth argument so the Android
+  bridge (which passes arguments positionally) can reach it.
+- 14 new tests (`test_v19_features.py`): language normalization matrix,
+  template markers (EN vs AR), live HTTP checks (English default,
+  Arabic RTL + Arabic labels + resolved placeholders, Arabic empty-fleet
+  hint, language switch requires restart), and real import→run flows for
+  both new sample bots (log polling, state machine, config respected:
+  task list + per-task duration + interval).
+
+### Added — Sample bots + registry
+- **System Monitor** (`sys-monitor`): long-running service bot sampling
+  CPU-time deltas, resident memory, thread count and GC object count on
+  a configurable interval (`config.interval_seconds`, clamped 1–3600 s);
+  cooperative loop, progress reporting, stdlib only (`os`, `resource`,
+  `gc`, `threading`).
+- **Task Runner** (`task-runner`): one-shot batch bot (`restart.policy =
+  "never"`) that walks a configurable task list
+  (`config.tasks`, `config.per_task_seconds`) with live progress and
+  finishes `COMPLETED`; every wait is a cooperative
+  `ctx.sleep_or_stop` slice, so stopping mid-run is clean.
+- Registry grows to five curated bots; new entries point at the
+  v1.9.0 release assets (`sys-monitor.zip`, `task-runner.zip`) and both
+  manifests validate against the strict `validate_manifest` rules.
+
+### Added — Android app (verified by CI build)
+- Status-page language follows the app language everywhere the server
+  is started: settings toggle, port change, token change, language
+  change (auto-restart so the dashboard switches immediately), and the
+  foreground service boot path — resolution of "system" → device locale
+  lives in `util/PageLanguage.kt`.
+- New hint under the LAN dashboard settings:
+  "The browser dashboard follows this app's language (Arabic renders
+  right-to-left)." (strings 172/172, EN+AR parity).
+
 ## [1.8.0] — 2026-10-26
 
 The GitHub import feature, done properly: paste a link, every bot inside

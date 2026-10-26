@@ -175,6 +175,13 @@ fun SettingsScreen() {
                     checked = settings.webStatusEnabled,
                     onChange = vm::setWebStatusEnabled,
                 )
+                // v1.9: the browser dashboard follows the app language.
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.settings_web_status_language_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
                 if (settings.webStatusEnabled) {
                     Spacer(Modifier.height(6.dp))
                     var portText by remember(settings.webStatusPort) {

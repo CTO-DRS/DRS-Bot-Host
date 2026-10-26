@@ -7,6 +7,11 @@ to any browser on the same Wi-Fi:
 - ``GET /api/status``          → JSON: host stats + full bot list
 - ``GET /api/bots/<id>/logs``  → JSON: last N log records of one bot
 
+Since v1.9 the dashboard ships in two languages: pass ``language="ar"``
+(for Arabic) and the page renders right-to-left with Arabic labels; the
+default stays English. The Android app passes its current UI language so
+the page always matches what the user picked in the app.
+
 Optional shared-secret protection: pass ``token`` and every request must
 present ``?key=...`` or an ``Authorization: Bearer ...`` header, otherwise it
 gets 401. The server binds an explicit host (default ``0.0.0.0``) and an
@@ -33,7 +38,9 @@ from urllib.parse import parse_qs, urlparse
 DEFAULT_PORT = 8090
 MAX_LOG_LIMIT = 1000
 
-_PAGE = """<!doctype html>
+PAGE_LANGUAGES = ("en", "ar")
+
+_PAGE = _PAGE_EN = """<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -83,7 +90,73 @@ __ROWS__
 <div class="foot">JSON API: <code>/api/status</code> · logs per bot: <code>/api/bots/&lt;id&gt;/logs?limit=100</code></div>
 </body></html>"""
 
+_PAGE_AR = """<!doctype html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="5">
+<title>DRS Bot Host — حالة الأسطول</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px; font:15px/1.5 system-ui, sans-serif;
+         background:#0a0e1a; color:#e8ecf4; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h1 span { color:#22d3ee; }
+  .sub { color:#8b93a7; font-size:13px; margin-bottom:20px; }
+  .tiles { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
+  .tile { background:#111827; border:1px solid #1f2937; border-radius:12px;
+          padding:12px 18px; min-width:104px; }
+  .tile b { display:block; font-size:24px; color:#22d3ee; }
+  .tile small { color:#8b93a7; }
+  table { width:100%; border-collapse:collapse; background:#111827;
+          border:1px solid #1f2937; border-radius:12px; overflow:hidden; }
+  th, td { text-align:right; padding:9px 12px; border-bottom:1px solid #1f2937;
+           font-size:14px; }
+  th { color:#8b93a7; font-weight:600; font-size:12px; }
+  tr:last-child td { border-bottom:none; }
+  .st { font-weight:700; font-size:12px; padding:2px 10px; border-radius:999px;
+        border:1px solid; }
+  .RUNNING,.STARTING,.BACKOFF { color:#34d399; border-color:#34d39955; }
+  .FAILED { color:#f87171; border-color:#f8717155; }
+  .STOPPING { color:#fbbf24; border-color:#fbbf2455; }
+  .STOPPED,.COMPLETED,.FORCE_STOPPED { color:#8b93a7; border-color:#8b93a755; }
+  code { color:#a5b4fc; font-size:12px; direction:ltr; unicode-bidi:embed; }
+  .foot { margin-top:18px; color:#8b93a7; font-size:12px; }
+</style></head><body>
+<h1>DRS Bot Host <span>›</span> حالة الأسطول</h1>
+<div class="sub">المضيف __HOST_VERSION__ · بايثون __PY_VERSION__ · مدة التشغيل __UPTIME__ · تحديث تلقائي كل 5 ثوانٍ</div>
+<div class="tiles">
+  <div class="tile"><b>__TOTAL__</b><small>بوتات</small></div>
+  <div class="tile"><b>__RUNNING__</b><small>قيد التشغيل</small></div>
+  <div class="tile"><b>__FAILED__</b><small>فاشلة</small></div>
+  <div class="tile"><b>__RESTARTS__</b><small>إعادات التشغيل</small></div>
+  <div class="tile"><b>__RUNS__</b><small>التشغيلات</small></div>
+</div>
+<table>
+<tr><th>البوت</th><th>الحالة</th><th>التشغيلات</th><th>مدة العمل</th><th>المعالج</th></tr>
+__ROWS__
+</table>
+<div class="foot">واجهة JSON: <code>/api/status</code> · سجلات كل بوت: <code>/api/bots/&lt;id&gt;/logs?limit=100</code></div>
+</body></html>"""
+
+_EMPTY_ROW_EN = '<tr><td colspan="5" style="color:#8b93a7">no bots installed yet</td></tr>'
+_EMPTY_ROW_AR = '<tr><td colspan="5" style="color:#8b93a7">لا توجد بوتات مثبتة بعد</td></tr>'
+
 _STATE_CELL = '<td><span class="st {state}">{state}</span></td>'
+
+
+def normalize_language(language) -> str:
+    """Map any user/bridge input onto a supported page language.
+
+    Unknown / None / blank values fall back to English so an old caller
+    keeps the exact v1.3 page. Accepted Arabic spellings: ``ar``,
+    ``ara``, ``arabic``, ``العربية``.
+    """
+    value = str(language or "").strip().lower()
+    if value in {"ar", "ara", "arabic", "العربية"}:
+        return "ar"
+    return "en"
 
 
 class _FleetSnapshot:
@@ -121,9 +194,11 @@ class FleetStatusServer:
 
     def __init__(self, snapshot: _FleetSnapshot, host: str = "0.0.0.0",
                  port: int = DEFAULT_PORT, token: str | None = None,
-                 certfile: str | None = None, keyfile: str | None = None):
+                 certfile: str | None = None, keyfile: str | None = None,
+                 language: str = "en"):
         self.snapshot = snapshot
         self.host = host
+        self.language = normalize_language(language)
         self.requested_port = int(port)
         self.token = (str(token).strip() or None) if token else None
         self.certfile = (str(certfile).strip() or None) if certfile else None
@@ -276,7 +351,7 @@ class FleetStatusServer:
                 )
             )
         if not rows:
-            rows.append('<tr><td colspan="5" style="color:#8b93a7">no bots installed yet</td></tr>')
+            rows.append(_EMPTY_ROW_AR if self.language == "ar" else _EMPTY_ROW_EN)
         uptime = stats.get("uptime_seconds")
         uptime_text = "-" if uptime is None else "%.0fs" % float(uptime)
         replacements = {
@@ -290,7 +365,7 @@ class FleetStatusServer:
             "__RUNS__": str(stats.get("runs", 0)),
             "__ROWS__": "\n".join(rows),
         }
-        page = _PAGE
+        page = _PAGE_AR if self.language == "ar" else _PAGE_EN
         for key, value in replacements.items():
             page = page.replace(key, value)
         return page

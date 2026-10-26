@@ -1,0 +1,20 @@
+{
+  "id": "sys-monitor",
+  "name": "System Monitor",
+  "version": "1.0.0",
+  "entrypoint": "main.py",
+  "language": "python",
+  "author": "DRS",
+  "description": "Samples CPU time, memory, threads and GC stats on a fixed interval and logs them; stdlib only.",
+  "requirements": [],
+  "config": {
+    "interval_seconds": 5.0
+  },
+  "restart": {
+    "policy": "on_failure",
+    "max_restarts": 3,
+    "backoff_seconds": 2.0,
+    "backoff_multiplier": 2.0
+  },
+  "auto_start": false
+}

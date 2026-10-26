@@ -17,6 +17,7 @@ import com.drsbot.host.MainActivity
 import com.drsbot.host.R
 import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.di.HostGraph
+import com.drsbot.host.util.PageLanguage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -63,7 +64,12 @@ class BotHostService : LifecycleService() {
                     if (snapshot.keepCpuAwake) {
                         acquireWakeLock()
                     }
-                    syncWebStatus(snapshot.webStatusEnabled, snapshot.webStatusPort, snapshot.webStatusToken)
+                    syncWebStatus(
+                        snapshot.webStatusEnabled,
+                        snapshot.webStatusPort,
+                        snapshot.webStatusToken,
+                        PageLanguage.resolve(snapshot.language),
+                    )
                 }
             }
         }
@@ -76,7 +82,12 @@ class BotHostService : LifecycleService() {
             launch {
                 SettingsStore.get(applicationContext).settings.collect { settings ->
                     alertsEnabled = settings.crashAlerts
-                    syncWebStatus(settings.webStatusEnabled, settings.webStatusPort, settings.webStatusToken)
+                    syncWebStatus(
+                        settings.webStatusEnabled,
+                        settings.webStatusPort,
+                        settings.webStatusToken,
+                        PageLanguage.resolve(settings.language),
+                    )
                 }
             }
             while (true) {
@@ -138,10 +149,10 @@ class BotHostService : LifecycleService() {
         }
     }
 
-    private fun syncWebStatus(enabled: Boolean, port: Int, token: String) {
+    private fun syncWebStatus(enabled: Boolean, port: Int, token: String, language: String) {
         lifecycleScope.launch {
             if (enabled) {
-                HostGraph.repository.webStatusStart(applicationContext, port, token)
+                HostGraph.repository.webStatusStart(applicationContext, port, token, language)
                     .onFailure {
                         android.util.Log.w("BotHostService", "web status start failed: ${it.message}")
                     }

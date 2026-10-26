@@ -142,6 +142,7 @@
     <string name="settings_web_status_token_summary">Visitors must present this token as ?key=… or an Authorization: Bearer header. Changing it restarts the server.</string>
     <string name="settings_web_status_running">Serving on %1$s — open it from any device on the same network</string>
     <string name="settings_web_status_starting">Starting the status server…</string>
+    <string name="settings_web_status_language_hint">The browser dashboard follows this app\'s language (Arabic renders right-to-left).</string>
     <string name="settings_backup_section">Backup &amp; restore</string>
     <string name="settings_backup_summary">Zip every installed bot (sources + manifest, not logs) into one archive, or bring a fleet back from a backup zip.</string>
     <string name="settings_backup_button">Backup all bots</string>

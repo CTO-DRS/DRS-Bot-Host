@@ -1,0 +1,18 @@
+{
+  "id": "task-runner",
+  "name": "Task Runner",
+  "version": "1.0.0",
+  "entrypoint": "main.py",
+  "language": "python",
+  "author": "DRS",
+  "description": "Walks a configurable demo task list with live progress reporting, then completes cleanly; stdlib only.",
+  "requirements": [],
+  "config": {
+    "tasks": ["prepare", "scan", "analyze", "report", "cleanup"],
+    "per_task_seconds": 2.0
+  },
+  "restart": {
+    "policy": "never"
+  },
+  "auto_start": false
+}

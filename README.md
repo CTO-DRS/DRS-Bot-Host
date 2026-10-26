@@ -6,12 +6,12 @@
 مفتوح المصدر بالكامل، بلا أي استضافة مدفوعة.
 
 [![CI](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml/badge.svg)](https://github.com/CTO-DRS/DRS-Bot-Host/actions/workflows/ci.yml)
-![version](https://img.shields.io/badge/version-1.8.0-blue)
+![version](https://img.shields.io/badge/version-1.9.0-blue)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 ![python](https://img.shields.io/badge/hosted%20runtime-CPython%203.12-yellow)
 
 > **📥 تحميل التطبيق / Download the APK:**
-> [**DRS-Bot-Host-v1.8.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.8.0/DRS-Bot-Host-v1.8.0-debug.apk) (arm64-v8a + x86_64)
+> [**DRS-Bot-Host-v1.9.0-debug.apk**](https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.9.0/DRS-Bot-Host-v1.9.0-debug.apk) (arm64-v8a + x86_64)
 > من صفحة الإصدارات / from the [Releases page](https://github.com/CTO-DRS/DRS-Bot-Host/releases)
 
 </div>
@@ -78,7 +78,7 @@ DRS Bot Host turns an Android phone into a small bot server:
 
 | Component | Status |
 |---|---|
-| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, healthcheck, downloader, ghscan, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **209/209 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
+| Python core (`python-runtime/`): manifest, importer, streams, logging, runner, supervisor, scheduler, healthcheck, downloader, ghscan, backup, marketplace, skills, installer, isolation, webstatus, host_api, cli, scaffold | ✅ **223/223 pytest passing** (locally executed + CI matrix 3.10/3.11/3.12), `compileall` clean |
 | End-to-end bot hosting on desktop (import ZIP/folder → run → cooperative stop; scaffold → import → reconfigure → run) | ✅ Executed locally via `drs_host.cli` |
 | Android app (`app/`): Compose UI, service, PyBridge, data layer | ✅ **Compiled + JVM unit tests + `assembleDebug` green in CI** (sandbox has no Android SDK, so validation happens on GitHub Actions) |
 | CI: pytest matrix (3.10/3.11/3.12) + `assembleDebug` + JVM tests + APK artifact | ✅ **Green** — debug APK (embedded CPython for arm64-v8a/x86_64) published as the `drs-bot-host-debug-apk` artifact and attached to Releases |
@@ -197,6 +197,30 @@ Bot contract: **docs/BOT_SPEC.md**.
   disabled semantics, recovery via a real supervised restart, registry
   source round-trip + a live custom-registry fetch) + real-CLI smoke.
 
+## What shipped in v1.9
+
+- **Bilingual Wi-Fi status page**: pass `language="ar"` to
+  `web_status_start(...)` (or let the app do it) and the browser
+  dashboard renders right-to-left with Arabic labels, tiles, table
+  headers, empty-fleet hint and footer; the English page is unchanged by
+  default and the JSON API is language-independent.
+  `web_status_info()` reports the active language.
+- **The dashboard follows the app language**: settings toggle, port or
+  token change, in-app language switch (auto-restarts the server so the
+  page flips immediately) and the boot service path all pass the
+  resolved language ("system" resolves via the device locale —
+  `util/PageLanguage.kt`).
+- **Two new curated bots** (registry now has five, stdlib-only):
+  **System Monitor** (periodic CPU/memory/threads/GC samples with a
+  configurable interval) and **Task Runner** (configurable one-shot task
+  list with live progress that finishes `COMPLETED`). Release assets
+  `sys-monitor.zip` / `task-runner.zip` are attached to v1.9.0 so the
+  Market tab can install them.
+- Verified locally: **223/223 pytest** (14 new v1.9 tests: language
+  normalization, EN/AR template markers, live-HTTP Arabic RTL page,
+  empty-fleet Arabic hint, restart-to-switch-language, and real
+  import→run flows for both bots with config-driven assertions).
+
 ## What shipped in v1.8
 
 - **GitHub link scanner** (`drs_host.ghscan`): `parse_github_url()`
@@ -228,7 +252,7 @@ Bot contract: **docs/BOT_SPEC.md**.
   the server killed between scan and import to prove cache reuse) + a
   real CLI smoke (scan → import --all → list).
 
-## Roadmap (post-1.8)
+## Roadmap (post-1.9)
 
 - Termux-style standalone Python binaries for on-device process isolation
   (needs ~30 MB of bundled runtime per ABI — deliberately not faked).

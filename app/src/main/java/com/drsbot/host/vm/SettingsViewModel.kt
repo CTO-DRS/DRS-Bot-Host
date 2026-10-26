@@ -15,6 +15,7 @@ import com.drsbot.host.data.SettingsStore
 import com.drsbot.host.data.WebStatusInfo
 import com.drsbot.host.di.HostGraph
 import com.drsbot.host.util.DeviceReader
+import com.drsbot.host.util.PageLanguage
 import com.drsbot.host.util.SafIo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,6 +71,7 @@ class SettingsViewModel(
             settingsStore.settings.collect { value ->
                 val previousPolicy = _settings.value.requirementsPolicy
                 val previousToken = _settings.value.webStatusToken
+                val previousLanguage = _settings.value.language
                 _settings.value = value
                 // Push the persisted policy into the Python runtime on change.
                 if (value.requirementsPolicy != previousPolicy) {
@@ -78,7 +80,23 @@ class SettingsViewModel(
                 // Restart the status server when the token changed so the new
                 // secret takes effect immediately (v1.4 token management).
                 if (value.webStatusToken != previousToken && value.webStatusEnabled) {
-                    repository.webStatusStart(appContext, value.webStatusPort, value.webStatusToken)
+                    repository.webStatusStart(
+                        appContext,
+                        value.webStatusPort,
+                        value.webStatusToken,
+                        PageLanguage.resolve(value.language),
+                    )
+                    refreshRuntime()
+                }
+                // Restart the status server when the UI language changed so the
+                // browser dashboard matches (v1.9 bilingual status page).
+                if (value.language != previousLanguage && value.webStatusEnabled) {
+                    repository.webStatusStart(
+                        appContext,
+                        value.webStatusPort,
+                        value.webStatusToken,
+                        PageLanguage.resolve(value.language),
+                    )
                     refreshRuntime()
                 }
             }
@@ -141,7 +159,12 @@ class SettingsViewModel(
         // this on boot / settings change).
         if (enabled) {
             val snapshot = _settings.value
-            repository.webStatusStart(appContext, snapshot.webStatusPort, snapshot.webStatusToken)
+            repository.webStatusStart(
+                appContext,
+                snapshot.webStatusPort,
+                snapshot.webStatusToken,
+                PageLanguage.resolve(snapshot.language),
+            )
         } else {
             repository.webStatusStop(appContext)
         }
@@ -152,7 +175,12 @@ class SettingsViewModel(
         val clamped = port.coerceIn(1024, 65535)
         settingsStore.setWebStatusPort(clamped)
         if (_settings.value.webStatusEnabled) {
-            repository.webStatusStart(appContext, clamped, _settings.value.webStatusToken)
+            repository.webStatusStart(
+                appContext,
+                clamped,
+                _settings.value.webStatusToken,
+                PageLanguage.resolve(_settings.value.language),
+            )
         }
         refreshRuntime()
     }

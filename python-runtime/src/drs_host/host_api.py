@@ -503,11 +503,15 @@ def install_bot_requirements(bot_id, timeout: float = None) -> dict:
 # --------------------------------------------------------------------- #
 
 
-def web_status_start(port=None, token=None, certfile=None, keyfile=None) -> dict:
+def web_status_start(port=None, token=None, certfile=None, keyfile=None,
+                     language=None) -> dict:
     """Start the LAN status dashboard (opt-in).
 
     ``certfile``/``keyfile`` (PEM, both or neither) switch the dashboard to
-    https. The Android bridge passes ``port`` and ``token`` positionally.
+    https. ``language`` (v1.9) picks the dashboard language: ``"ar"``
+    renders the Arabic right-to-left page, anything else stays English.
+    The Android bridge passes ``port`` and ``token`` positionally; newer
+    callers may pass ``language`` positionally as the fifth argument.
     """
     global _web_server
     from .webstatus import DEFAULT_PORT, FleetStatusServer, _FleetSnapshot
@@ -525,7 +529,7 @@ def web_status_start(port=None, token=None, certfile=None, keyfile=None) -> dict
         snapshot = _FleetSnapshot(supervisor, __version__, sys.version.split()[0])
         server = FleetStatusServer(
             snapshot, host="0.0.0.0", port=resolved_port, token=token,
-            certfile=certfile, keyfile=keyfile,
+            certfile=certfile, keyfile=keyfile, language=language,
         )
         result = server.start()
         if result.get("ok"):
@@ -555,6 +559,7 @@ def web_status_info() -> dict:
             "port": server.actual_port(),
             "protected": server.token is not None,
             "tls": server.certfile is not None and server.keyfile is not None,
+            "language": server.language,
         }
 
 

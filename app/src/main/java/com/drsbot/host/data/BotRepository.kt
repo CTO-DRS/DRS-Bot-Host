@@ -105,10 +105,13 @@ class BotRepository {
         context: Context,
         port: Int,
         token: String = "",
+        language: String = "en",
     ): Result<WebStatusInfo> =
         call(context) { api ->
             val obj = JSONObject(
-                PyBridge.dumps(api.callAttr("web_status_start", port, token)),
+                PyBridge.dumps(
+                    api.callAttr("web_status_start", port, token, null, null, language),
+                ),
             )
             if (!obj.optBoolean("ok", false)) {
                 throw IllegalStateException(obj.errorsMessage())

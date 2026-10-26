@@ -37,6 +37,30 @@
         "stdlib-only"
       ],
       "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.4.0/webhook-receiver.zip"
+    },
+    {
+      "id": "sys-monitor",
+      "name": "System Monitor",
+      "description": "Samples CPU time, memory, threads and GC stats on a fixed interval; stdlib only.",
+      "version": "1.0.0",
+      "author": "DRS",
+      "tags": [
+        "curated",
+        "stdlib-only"
+      ],
+      "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.9.0/sys-monitor.zip"
+    },
+    {
+      "id": "task-runner",
+      "name": "Task Runner",
+      "description": "Walks a configurable demo task list with live progress, then completes cleanly; stdlib only.",
+      "version": "1.0.0",
+      "author": "DRS",
+      "tags": [
+        "curated",
+        "stdlib-only"
+      ],
+      "url": "https://github.com/CTO-DRS/DRS-Bot-Host/releases/download/v1.9.0/task-runner.zip"
     }
   ]
 }

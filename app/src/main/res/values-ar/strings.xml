@@ -141,6 +141,7 @@
     <string name="settings_web_status_token_summary">يجب على الزائر تقديم هذا الرمز عبر ‎?key=… أو ترويسة Authorization: Bearer. تغييره يعيد تشغيل الخادم.</string>
     <string name="settings_web_status_running">تعمل على %1$s — افتحها من أي جهاز على الشبكة نفسها</string>
     <string name="settings_web_status_starting">جارٍ تشغيل خادم الحالة…</string>
+    <string name="settings_web_status_language_hint">تتبع لوحة المتصفح لغة هذا التطبيق (وتُعرض بالعربية من اليمين إلى اليسار).</string>
     <string name="settings_backup_section">النسخ الاحتياطي والاستعادة</string>
     <string name="settings_backup_summary">اضغط كل البوتات المثبّتة (المصادر + البيان، دون السجلات) في أرشيف واحد، أو أعِد الأسطول كاملة من ملف نسخة احتياطية.</string>
     <string name="settings_backup_button">نسخ كل البوتات احتياطيًا</string>
