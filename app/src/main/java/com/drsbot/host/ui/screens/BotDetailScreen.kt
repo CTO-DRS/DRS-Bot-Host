@@ -209,6 +209,106 @@ fun BotDetailScreen(
                     }
                 }
                 item {
+                    val status = state.status
+                    if (status?.health != null) {
+                        val health = status.health!!
+                        val healthState = status.healthState
+                        GlassCard(modifier = Modifier.fillMaxWidth(), accent = true) {
+                            SectionHeader(stringResource(R.string.bot_health_section))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.bot_health_probe_line,
+                                            health.kind,
+                                            health.target ?: "?",
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = DrsThemeTokens.logFontFamily,
+                                        maxLines = 2,
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(
+                                            R.string.bot_health_state_line,
+                                            healthState?.status ?: "unknown",
+                                            healthState?.consecutiveFailures ?: 0,
+                                            healthState?.recoveries ?: 0,
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = when (healthState?.status) {
+                                            "healthy" -> NeonMint
+                                            "unhealthy" -> NeonRed
+                                            else -> com.drsbot.host.ui.theme.TextSecondary
+                                        },
+                                    )
+                                    if (!health.enabled) {
+                                        Text(
+                                            text = stringResource(R.string.bot_health_disabled),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = com.drsbot.host.ui.theme.TextSecondary,
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = health.enabled,
+                                    onCheckedChange = { vm.toggleHealth(it) },
+                                )
+                            }
+                            healthState?.lastError?.let { error ->
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = error,
+                                    color = NeonRed,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            state.probeError?.let { error ->
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = error,
+                                    color = NeonRed,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            state.probe?.let { probe ->
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = stringResource(
+                                        if (probe.healthy) {
+                                            R.string.bot_health_probe_ok
+                                        } else {
+                                            R.string.bot_health_probe_fail
+                                        },
+                                        probe.detail,
+                                    ),
+                                    color = if (probe.healthy) NeonMint else NeonRed,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { vm.probeNow() },
+                                enabled = !state.probing,
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        if (state.probing) {
+                                            R.string.bot_health_probing
+                                        } else {
+                                            R.string.bot_health_probe_now
+                                        }
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
                     GlassCard(modifier = Modifier.fillMaxWidth()) {
                         state.status?.description?.takeIf { it.isNotBlank() }?.let {
                             Text(it, style = MaterialTheme.typography.bodyMedium)

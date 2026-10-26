@@ -199,6 +199,53 @@ class BotRepository {
         true
     }
 
+    // ── v1.6: health checks / registry sources ─────────────────────────
+
+    /** One manual health probe (diagnostic; the host never auto-recovers). */
+    suspend fun probeHealth(context: Context, botId: String): Result<HealthProbeResult> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("probe_health", botId)))
+            requireOk(obj)
+            HealthProbeResult.fromJson(obj)
+        }
+
+    /** Enable/disable a bot's health checks (persists to bot.json). */
+    suspend fun setHealthEnabled(
+        context: Context,
+        botId: String,
+        enabled: Boolean,
+    ): Result<Boolean> = call(context) { api ->
+        val obj = JSONObject(
+            PyBridge.dumps(api.callAttr("set_health_enabled", botId, enabled)),
+        )
+        requireOk(obj)
+        true
+    }
+
+    /** Saved custom (community) registry URLs, oldest first. */
+    suspend fun registrySources(context: Context): Result<List<String>> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("registry_sources")))
+            requireOk(obj)
+            obj.optJSONArray("sources").toStringList()
+        }
+
+    /** Validate + persist one custom registry URL. */
+    suspend fun addRegistrySource(context: Context, url: String): Result<Boolean> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("add_registry_source", url)))
+            requireOk(obj)
+            true
+        }
+
+    /** Remove one saved custom registry URL. */
+    suspend fun removeRegistrySource(context: Context, url: String): Result<Boolean> =
+        call(context) { api ->
+            val obj = JSONObject(PyBridge.dumps(api.callAttr("remove_registry_source", url)))
+            requireOk(obj)
+            true
+        }
+
     suspend fun setBotConfig(
         context: Context,
         botId: String,

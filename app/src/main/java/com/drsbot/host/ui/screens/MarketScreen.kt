@@ -10,16 +10,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.drsbot.host.LocalAppContext
@@ -27,7 +37,9 @@ import com.drsbot.host.R
 import com.drsbot.host.ui.components.GlassCard
 import com.drsbot.host.ui.components.GlowBackground
 import com.drsbot.host.ui.components.NeonButton
+import com.drsbot.host.ui.components.OutlinedNeonButton
 import com.drsbot.host.ui.components.SectionHeader
+import com.drsbot.host.ui.theme.DrsThemeTokens
 import com.drsbot.host.ui.theme.NeonAmber
 import com.drsbot.host.ui.theme.NeonMint
 import com.drsbot.host.ui.theme.NeonRed
@@ -46,6 +58,9 @@ fun MarketScreen(onInstalled: (String) -> Unit) {
     val vm: MarketViewModel = viewModel { MarketViewModel(appContext) }
     val state by vm.state.collectAsState()
     val overwrite by vm.overwrite.collectAsState()
+    val sources by vm.sources.collectAsState()
+    val sourceMessage by vm.sourceMessage.collectAsState()
+    var newSource by remember { mutableStateOf("") }
 
     when (val current = state) {
         is MarketUiState.Ready -> {
@@ -77,6 +92,83 @@ fun MarketScreen(onInstalled: (String) -> Unit) {
                 text = stringResource(R.string.market_note),
                 style = MaterialTheme.typography.bodySmall,
             )
+
+            // v1.6: custom (community) registry sources
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(stringResource(R.string.market_sources_title))
+                Text(
+                    text = stringResource(R.string.market_sources_note),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = newSource,
+                    onValueChange = { newSource = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.market_sources_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    },
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NeonButton(
+                        text = stringResource(R.string.market_sources_add),
+                        onClick = {
+                            if (newSource.isNotBlank()) {
+                                vm.addSource(newSource.trim())
+                                newSource = ""
+                            }
+                        },
+                        enabled = newSource.isNotBlank(),
+                    )
+                    OutlinedNeonButton(
+                        text = stringResource(R.string.market_sources_default),
+                        onClick = { vm.refresh() },
+                    )
+                }
+                sourceMessage?.let { message ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = message,
+                        color = NeonRed,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (sources.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    sources.forEach { source ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = source,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = DrsThemeTokens.logFontFamily,
+                                maxLines = 2,
+                            )
+                            TextButton(onClick = { vm.fetchSource(source) }) {
+                                Text(stringResource(R.string.market_sources_use))
+                            }
+                            IconButton(onClick = { vm.removeSource(source) }) {
+                                Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = "remove source",
+                                    tint = NeonRed,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             when (val current = state) {
                 is MarketUiState.Loading -> {

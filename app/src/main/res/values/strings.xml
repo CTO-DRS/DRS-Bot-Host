@@ -145,6 +145,22 @@
     <string name="bot_install_running">Installing…</string>
     <string name="bot_install_ok">Installed into this bot\'s private site dir: %1$s</string>
 
+    <string name="bot_health_section">Health checks</string>
+    <string name="bot_health_probe_line">Probe: %1$s → %2$s</string>
+    <string name="bot_health_state_line">state: %1$s · failures: %2$d · recoveries: %3$d</string>
+    <string name="bot_health_disabled">Checks paused</string>
+    <string name="bot_health_probe_now">Probe now</string>
+    <string name="bot_health_probing">Probing…</string>
+    <string name="bot_health_probe_ok">Healthy: %1$s</string>
+    <string name="bot_health_probe_fail">Unhealthy: %1$s</string>
+
+    <string name="market_sources_title">Registry sources</string>
+    <string name="market_sources_note">Point the market at your own registry JSON (http/https) — a gist, a LAN server, anywhere. Fetching without a specific source uses the first saved one.</string>
+    <string name="market_sources_hint">https://example.com/registry.json</string>
+    <string name="market_sources_add">Save source</string>
+    <string name="market_sources_use">Use</string>
+    <string name="market_sources_default">Default registry</string>
+
     <string name="state_STOPPED">Stopped</string>
     <string name="state_STARTING">Starting</string>
     <string name="state_RUNNING">Running</string>

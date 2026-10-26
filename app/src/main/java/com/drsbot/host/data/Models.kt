@@ -35,6 +35,8 @@ data class BotStatus(
     val isolationEffective: String = "thread",
     val requirements: List<String> = emptyList(),
     val configJson: String = "{}",
+    val health: HealthConfig? = null,
+    val healthState: HealthState? = null,
 ) {
     /** Mirrors BotState.TERMINAL on the Python side. */
     val isTerminal: Boolean
@@ -93,8 +95,75 @@ data class BotStatus(
                 isolation = o.optString("isolation", "thread"),
                 isolationEffective = o.optString("isolation_effective", "thread"),
                 requirements = o.optJSONArray("requirements").toStringList(),
+                health = o.optJSONObject("health")?.let { HealthConfig.fromJson(it) },
+                healthState = o.optJSONObject("health_state")?.let { HealthState.fromJson(it) },
             )
         }
+    }
+}
+
+/** A bot's health-check configuration from its manifest (v1.6). */
+data class HealthConfig(
+    val kind: String,
+    val url: String?,
+    val script: String?,
+    val enabled: Boolean,
+    val intervalSeconds: Double,
+    val recover: String,
+) {
+    /** Human-readable probe target: the URL or the bot-relative script. */
+    val target: String?
+        get() = url ?: script
+
+    companion object {
+        fun fromJson(o: JSONObject): HealthConfig = HealthConfig(
+            kind = o.optString("kind", "http"),
+            url = o.optString("url").takeIf { it.isNotBlank() },
+            script = o.optString("script").takeIf { it.isNotBlank() },
+            enabled = o.optBoolean("enabled", true),
+            intervalSeconds = o.optDouble("interval_seconds", 30.0).takeIf { !it.isNaN() } ?: 30.0,
+            recover = o.optString("recover", "restart"),
+        )
+    }
+}
+
+/** Live health-monitor state for one bot (v1.6). */
+data class HealthState(
+    val status: String,
+    val consecutiveFailures: Int,
+    val consecutiveSuccesses: Int,
+    val lastError: String?,
+    val recoveries: Int,
+    val nextProbeAt: Double?,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): HealthState = HealthState(
+            status = o.optString("status", "unknown"),
+            consecutiveFailures = o.optInt("consecutive_failures", 0),
+            consecutiveSuccesses = o.optInt("consecutive_successes", 0),
+            lastError = o.optString("last_error").takeIf { it.isNotBlank() },
+            recoveries = o.optInt("recoveries", 0),
+            nextProbeAt = if (o.isNull("next_probe_at")) {
+                null
+            } else {
+                o.optDouble("next_probe_at").takeIf { !it.isNaN() }
+            },
+        )
+    }
+}
+
+/** Outcome of probe_health(): one manual diagnostic probe (v1.6). */
+data class HealthProbeResult(
+    val healthy: Boolean,
+    val detail: String,
+    val elapsedMs: Double,
+) {
+    companion object {
+        fun fromJson(o: JSONObject): HealthProbeResult = HealthProbeResult(
+            healthy = o.optBoolean("healthy", false),
+            detail = o.optString("detail"),
+            elapsedMs = o.optDouble("elapsed_ms", 0.0).takeIf { !it.isNaN() } ?: 0.0,
+        )
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.drsbot.host.data.BotStatus
 import com.drsbot.host.data.ExportResult
+import com.drsbot.host.data.HealthProbeResult
 import com.drsbot.host.data.InstallResult
 import com.drsbot.host.data.LogRecord
 import com.drsbot.host.data.RequirementsCheck
@@ -32,6 +33,9 @@ data class BotDetailState(
     val installing: Boolean = false,
     val install: InstallResult? = null,
     val installError: String? = null,
+    val probing: Boolean = false,
+    val probe: HealthProbeResult? = null,
+    val probeError: String? = null,
 ) {
     /** Log stream narrowed by the active search query + level filter. */
     val filteredLogs: List<LogRecord>
@@ -79,6 +83,10 @@ class BotDetailViewModel(
             installing = current.installing,
             install = current.install,
             installError = current.installError,
+            // keep transient health-probe state across polls
+            probing = current.probing,
+            probe = current.probe,
+            probeError = current.probeError,
         )
     }
 
@@ -161,6 +169,34 @@ class BotDetailViewModel(
 
     fun toggleSchedule(enabled: Boolean) = launchAction {
         repository.setScheduleEnabled(appContext, botId, enabled)
+    }
+
+    /** Run one manual health probe now (diagnostic only). */
+    fun probeNow() {
+        if (_state.value.probing) return
+        _state.value = _state.value.copy(probing = true, probeError = null)
+        viewModelScope.launch {
+            repository.probeHealth(appContext, botId)
+                .onSuccess { result ->
+                    _state.value = _state.value.copy(
+                        probing = false,
+                        probe = result,
+                        probeError = null,
+                    )
+                    refresh()
+                }
+                .onFailure { failure ->
+                    _state.value = _state.value.copy(
+                        probing = false,
+                        probeError = failure.message,
+                    )
+                }
+        }
+    }
+
+    /** Enable/disable the bot's health checks (persists to bot.json). */
+    fun toggleHealth(enabled: Boolean) = launchAction {
+        repository.setHealthEnabled(appContext, botId, enabled)
     }
 
     fun remove(onRemoved: () -> Unit) {

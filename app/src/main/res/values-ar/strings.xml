@@ -144,6 +144,22 @@
     <string name="bot_install_running">جارٍ التثبيت…</string>
     <string name="bot_install_ok">ثُبّتت في مجلد الحزم الخاص بهذا البوت: %1$s</string>
 
+    <string name="bot_health_section">فحوص الصحة</string>
+    <string name="bot_health_probe_line">الفحص: %1$s ← %2$s</string>
+    <string name="bot_health_state_line">الحالة: %1$s · إخفاقات: %2$d · استرجاعات: %3$d</string>
+    <string name="bot_health_disabled">الفحوص متوقفة</string>
+    <string name="bot_health_probe_now">فحص الآن</string>
+    <string name="bot_health_probing">جارٍ الفحص…</string>
+    <string name="bot_health_probe_ok">سليم: %1$s</string>
+    <string name="bot_health_probe_fail">غير سليم: %1$s</string>
+
+    <string name="market_sources_title">مصادر السجل</string>
+    <string name="market_sources_note">وجّه السوق إلى ملف سجل خاص بك (http/https) — gist أو خادم محلي أو أي مكان. الجلب بدون مصدر محدد يستخدم أول مصدر محفوظ.</string>
+    <string name="market_sources_hint">https://example.com/registry.json</string>
+    <string name="market_sources_add">حفظ المصدر</string>
+    <string name="market_sources_use">استخدام</string>
+    <string name="market_sources_default">السجل الافتراضي</string>
+
     <string name="state_STOPPED">متوقف</string>
     <string name="state_STARTING">بدء التشغيل</string>
     <string name="state_RUNNING">يعمل</string>

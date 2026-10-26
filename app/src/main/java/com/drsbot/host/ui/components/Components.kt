@@ -248,6 +248,37 @@ fun NeonButton(
     }
 }
 
+/** Secondary action: neon outline, glass fill — pairs with NeonButton. */
+@Composable
+fun OutlinedNeonButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(14.dp)
+    val alpha = if (enabled) 1f else 0.4f
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.linearGradient(listOf(GlassFillA, GlassFillB)),
+            )
+            .border(1.dp, primary.copy(alpha = 0.55f * alpha), shape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = primary.copy(alpha = alpha),
+        )
+    }
+}
+
 /** Dashboard KPI tile: big monospace value, small caps label, accent bar. */
 @Composable
 fun StatTile(
